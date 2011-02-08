@@ -12,7 +12,7 @@
 	{% else %}
 	<script type="text/javascript" src="{{ basePath }}"></script>
 	<table class="reservesTable" cellpadding="5" border="0">
-		<caption><p>There {% if sections|length != 1 %}are{% else %}is{% endif %} {{ sections|length }} section{% if reserves|length != 1 %}s{% endif %} with added reserves for this semester. 
+		<caption><p>There {% if sections|length != 1 %}are{% else %}is{% endif %} {{ sections|length }} section{% if sections|length != 1 %}s{% endif %} with added reserves for this semester. 
 		Reserves are grouped according to course section.  A reserve may contain more than one file for you to download.</p> </caption>
 
 		{% set prevSectionID = 0 %}

@@ -42,11 +42,16 @@
 			$.post('{{ basePath }}/index.php/opacProxy/' + itemID, function (data) {
 					// data is valid JSON
 					var jsonObject = jQuery.parseJSON(data);
-					var htmlStr = jsonObject.title + ' / ' + jsonObject.author + ' / ' + jsonObject.callNumber + ' / ' + jsonObject.location + ' / ' + jsonObject.library + ' / ' + jsonObject.loanPeriod;
-					if (jsonObject.checkedOut == '0') {
-						htmlStr = htmlStr + ' / ' + 'AVAILABLE';
+					var htmlStr;
+					if (jsonObject.title == null) {
+						htmlStr = 'There is no record for this Call Number.';
 					} else {
-						htmlStr = htmlStr + ' / ' + 'Checked Out: Due back @ ' + jsonObject.dueBack;
+						htmlStr = jsonObject.title + ' / ' + jsonObject.author + ' / ' + jsonObject.callNumber + ' / ' + jsonObject.location + ' / ' + jsonObject.library + ' / ' + jsonObject.loanPeriod;
+						if (jsonObject.checkedOut == '0') {
+							htmlStr = htmlStr + ' / ' + 'AVAILABLE';
+						} else {
+							htmlStr = htmlStr + ' / ' + 'Checked Out: Due back @ ' + jsonObject.dueBack;
+						}
 					}
 					$("#item-" + itemID).html(htmlStr);
 					$("#progress").toggle();
@@ -75,7 +80,7 @@
 	
 		{% if electronicItems|length > 0 %}
 
-			<p>The following electronic items are on reserve for this section.</p>
+			<p>The following electronic items have been placed on reserve:</p>
 
 			<table id="electronicItems" class="reservesTable" cellpadding="5" border="0">
 				<tr>
@@ -104,7 +109,7 @@
 		{% endif %}
 
 		{% if physicalItems|length > 0 %}
-		<br /><p>The following physical items are on reserve for this section.</p>
+		<br /><p>The following physical items have been placed on reserve:</p>
 		<table id="physicalItems" class="reservesTable" cellpadding="5" border="0">
 				<tr>
 					<th>Item Call Number (click for catalogue record) <span id="progress" style="display: none;"><img src="{{ basePath }}/images/ajax-loader.gif" /></span></th><th>Item Location</th><th>Loan Period</th>

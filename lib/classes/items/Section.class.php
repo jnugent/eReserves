@@ -153,7 +153,16 @@ class Section extends ElectronicReserveItem {
 	 */
 	static function getCurrentSemester() {
 
-		return intval(date('Y')) . 'FA';
+		$currMonth = date('n');
+		$term = '';
+		if ($currMonth <= 4) {
+			$term = 'WI';
+		} else if ($currMonth <= 8) {
+			$term = 'SU';
+		} else {
+			$term = 'FA';
+		}
+		return intval(date('Y')) . $term;
 	}
 
 	/**
