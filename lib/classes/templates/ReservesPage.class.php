@@ -133,12 +133,14 @@ class ReservesPage {
 	public function showPage($op, $objectID, &$reservesUser, $opPerformed = false, $extraArgs = array()) {
 
 		import('general.Config');
+		import('general.ReservesRequest');
+		import('forms.Form');
+
 		$config = new Config();
 		$basePath = $config->getSetting('general', 'base_path');
 		$templateState = array('page' => $this, 'basePath' => $basePath, 'user' => $reservesUser, 'opPerformed' => $opPerformed);
-		$breadCrumb = '<a href="' . $basePath . '/index.php">Home</a> | <a href="javascript:history.go(-1)">Previous Page</a> ';
-		import('forms.Form');
-		import('general.ReservesRequest');
+		$referringDoc = ReservesRequest::getReferringPage() != '' ? ReservesRequest::getReferringPage() : 'javascript:history.go(-1)';
+		$breadCrumb = '<a href="' . $basePath . '/index.php">Home</a> | <a href="' . $referringDoc . '">Previous Page</a> ';
 
 		if ($reservesUser->isAnonymous()) {
 			$templateState['loginForm'] = $this->_getLoginForm($basePath);
@@ -147,16 +149,15 @@ class ReservesPage {
 
 		switch ($op) {
 
-		case 'quickSearch':
+			case 'quickSearch':
 				$templateState['courses'] = $opPerformed['0'];
 				$templateState['totalRecords'] = $opPerformed['1'];
 
 				$templateState['pageOffset'] = intval($extraArgs[0]) > 0 ? intval($extraArgs[0]) : 0;
-				if ($extraArgs[1] != '') {
-					$templateState['keywords'] = $extraArgs[1];
-				} else {
-					$templateState['keywords'] = ReservesRequest::getRequestValue('keywords');
-				}
+
+				$templateState['keywords'] = $extraArgs[1] != '' ? $extraArgs[1] : ReservesRequest::getRequestValue('keywords');
+				$templateState['semester'] = $extraArgs[2] != '' ? $extraArgs[2] : ReservesRequest::getRequestValue('semester');
+
 				// NOTE this case falls through to get the search form that is present on the default index page.
 
 			case '': // the default front page case
@@ -165,6 +166,7 @@ class ReservesPage {
 					$breadCrumb = '';
 				}
 
+				$templateState['extraJS'] = getQuickSearchAJAX($basePath);
 				$formsArray = array();
 
 				$form = new Form(array('id' => 'searchReserves', 'method' => 'post', 'action' => $basePath . '/index.php/quickSearch'));
@@ -174,6 +176,10 @@ class ReservesPage {
 
 				$fieldSet->addField(new TextField( array('name' => 'keywords', 'primaryLabel' => 'Search', 'secondaryLabel' => 'Enter some keywords to search for', 'required' => true,
 							'requiredMsg' => 'Please enter some keywords', 'value' => $keywords)));
+				import('items.Section');
+				$fieldSet->addField(Section::getSemesterDropdown($templateState['semester']));
+				$fieldSet->addField(new Button( array('type' => 'submit', 'label' => 'Submit')) );
+
 				$form->addFieldSet($fieldSet);
 				$formsArray[] = $form;
 
@@ -236,16 +242,24 @@ class ReservesPage {
 
 				import('items.Section');
 				import('items.ItemHeading');
-				$itemHeading = new ItemHeading();
+				$itemHeadingID = intval($extraArgs[0]) > 0 ? intval($extraArgs[0]) : 0;
+				$itemHeading = new ItemHeading($itemHeadingID);
 				$section = new Section($objectID);
 				$itemHeadings = $section->getHeadings();
 				$templateState['itemHeadings'] = $itemHeadings;
 				$templateState['section'] = $section;
-				$breadCrumb .= ' | <a href="' . $basePath . '/index.php/viewCourses">View Your Courses</a>';
+				$breadCrumb .= ' | <a href="' . $basePath . '/index.php/viewReserves/' . $objectID . '">View This Section\'s Reserves</a>';
 
 				$itemHeading->setSectionID($section->getSectionID());
 				$formsArray[] = $itemHeading->assembleEditForm($basePath);
 				$templateState['forms'] = $formsArray;
+				break;
+
+			case 'deleteItemHeading':
+
+				import('items.Section');
+				$section = new Section($objectID);
+				$section->deleteHeading(intval($extraArgs[0]) > 0 ? intval($extraArgs[0]) : 0);
 				break;
 
 			case 'adminReserve':
@@ -369,6 +383,7 @@ class ReservesPage {
 				import('items.ReservesRecord');
 				$reservesRecord = new ReservesRecord($objectID);
 				$templateState['reservesRecord'] = $reservesRecord;
+				$breadCrumb .= ' | <a href="' . $basePath . '/index.php/viewReserves/' . $reservesRecord->getSectionID()  . '">View This Section\'s Other Reserves </a>';
 				break;
 
 			case 'searchByUser':
@@ -444,6 +459,13 @@ class ReservesPage {
 				$templateState['forms'] = $formsArray;
 
 			break;
+
+			case 'unenrolStudents':
+
+				import('items.Section');
+				$section = new Section($objectID);
+				$section->unenrolStudents();
+				break;
 
 		}
 

@@ -33,6 +33,15 @@
 					draggable: false, 
 					title: 'Confirm Reserve Creation' 
 				} );
+				
+				$("#unenrolLinkConfirm").dialog( {
+					autoOpen: false,
+					modal: true,
+					resizable: false,
+					draggable: false,
+					title: 'Confirm Unenrol Students'
+				} );
+				
 			});
 
 			function updateCount() {
@@ -62,10 +71,36 @@
 				);
 				$("#modalCreateConfirm").dialog("open");
 			}
-			//-->
+
+			function showUnenrolModal(sectionID) {
+				$("#unenrolLinkConfirm").html('You will remove all students (not instructors) from this Section.  This cannot be undone.  Are you sure?');
+				$("#unenrolLinkConfirm").dialog("option", 
+					"buttons", [
+						{ text: "Ok", click: function() {
+							$.ajax({
+								url: "{{ basePath }}/index.php/unenrolStudents/" + sectionID,
+								type: 'GET',
+								success: function(){ 
+
+										linkParent = $('#unenrolLink-' + sectionID).parent();
+										$("#unenrolLinkConfirm").dialog("close");
+										linkParent.fadeTo(400, 0.1);
+										linkParent.text('Students Unenroled');
+										linkParent.fadeTo(400, 1);
+								}
+							});
+
+							} },
+						{ text: "Cancel", click: function() { $(this).dialog("close"); return false; } }
+					]
+				);
+				$("#unenrolLinkConfirm").dialog("open");
+			}
+			 // -->
 		</script>
 
 		<div id="modalCreateConfirm"></div>
+		<div id="unenrolLinkConfirm"></div>
 		<form id="adminSectionForm" action="{{ basePath }}/index.php/createNewReserve/0" method="post">
 	{% endif %}
 
@@ -100,10 +135,10 @@
 					{% if user.canAdministerSection(section.getSectionID) or (user.isAdmin and not user.isActing) %}
 					<td>
 						{% if user.isAdmin and not user.isActing %}
-							<a href="{{ basePath }}/index.php/editSection/{{ section.getSectionID }}">Edit</a> |
+							<a href="{{ basePath }}/index.php/editSection/{{ section.getSectionID }}">Edit</a> | <span><a href="#" id="unenrolLink-{{ section.getSectionID }}" onClick="showUnenrolModal({{ section.getSectionID }})">Unenrol Students</a></span> |
 						{% endif %}
 						{% if user.canAdministerSection(section.getSectionID) or (user.isAdmin and not user.isActing) %}
-							<a href="{{ basePath }}/index.php/assignInstructors/{{ section.getSectionID }}/0">Instructors</a> | <a href="{{ basePath }}/index.php/itemHeadings/{{ section.getSectionID }}/0">Item Headings</a>
+							<a href="{{ basePath }}/index.php/assignInstructors/{{ section.getSectionID }}/0">Instructors</a> | <a href="{{ basePath }}/index.php/itemHeadings/{{ section.getSectionID }}/0">Headings</a>
 						{% endif %}
 					</td>
 					{% else %}

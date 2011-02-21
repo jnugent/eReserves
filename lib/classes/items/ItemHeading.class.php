@@ -118,11 +118,11 @@ class ItemHeading extends ElectronicReserveItem {
 		$itemheadingid = $this->getItemHeadingID();
 
 		if ($itemheadingid > 0 && $sectionid > 0) {
-			$sql = "UPDATE itemHeading SET headingTitle = ?, sectionID = ?, sequence = '1' WHERE itemHeadingID = ?";
+			$sql = "UPDATE itemHeading SET headingTitle = ?, sectionID = ? WHERE itemHeadingID = ?";
 		} else {
 			$sql = "INSERT INTO itemHeading (headingTitle, sectionID, sequence, itemHeadingID) VALUES (?, ?, '1', ?)";
 		}
-		$returnStatement = $db->Execute($sql, array($headingtitle, $sectionid, $sequence, $itemheadingid));
+		$returnStatement = $db->Execute($sql, array($headingtitle, $sectionid, $itemheadingid));
 		if ($returnStatement) {
 			return true;
 		} else {
@@ -130,6 +130,24 @@ class ItemHeading extends ElectronicReserveItem {
 		}
 	}
 
+	/**
+	 * @brief a convenience function to just toggle a heading title when we use our AJAX method
+	 * @return boolean true or false, if the update succeeded or not.
+	 */
+	function updateTitle() {
+		$db = getDB();
+		import('general.ReservesRequest');
+		$headingtitle = ReservesRequest::getRequestValue('headingtitle');
+		if ($headingtitle != '') {
+			$sql = "UPDATE itemHeading SET headingTitle = ? WHERE itemHeadingID = ?";
+			$returnStatement = $db->Execute($sql, array($headingtitle, $this->getItemHeadingID()));
+			if ($returnStatement) {
+				return true;
+			} else {
+				return false;
+			}
+		}
+	}
 	/**
 	 * @brief function which assembles a Form object representing this item heading, so it can be edited by a course admin.
 	 * @return Form the form object
@@ -143,6 +161,7 @@ class ItemHeading extends ElectronicReserveItem {
 		$label = $this->getItemHeadingID() > 0 ? 'Edit' : 'Create New';
 		$fieldSet = new FieldSet(array('legend' => $label . '  Item Heading'));
 		$fieldSet->addField(new HiddenField( array('required' => true, 'name' => 'sectionid', 'value' => intval($this->getAttribute('sectionid')) ) ));
+		$fieldSet->addField(new HiddenField( array('required' => true, 'name' => 'itemheadingid', 'value' => $this->getItemHeadingID() ) ));
 		$fieldSet->addField(new TextField( array('required' => true, 'primaryLabel' => 'Item Heading Title', 'secondaryLabel' => 'plain-text title', 'name' => 'headingtitle',
 							'value' => $this->getAttribute('headingtitle'), 'requiredMsg' => 'Please enter a title') ));
 

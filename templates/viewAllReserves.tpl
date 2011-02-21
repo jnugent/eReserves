@@ -24,7 +24,9 @@
 				{% set prevSectionID = sectionID %}
 				<tr id="section{{ sectionID }}" {% if loop.index|even %}class="plain"{% endif %}>
 					<th colspan="3" style="text-align: center">
-						<a href="{{ basePath }}/index.php/viewReserves/{{ section.getSectionID }}">{{ section.getCalendarCourseCode|e }}</a>
+						<a href="{{ basePath }}/index.php/viewReserves/{{ section.getSectionID }}">{{ section.getCalendarCourseCode|e }} - {{ section.getCourseName }}</a><br />
+						{% set instructors = section.getInstructors %}
+						{% if instructors != '' %} Instructed by: {{ instructors }} {% endif %}
 					</th>
 				</tr>
 			{% endif %}

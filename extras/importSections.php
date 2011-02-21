@@ -1,5 +1,4 @@
 <?php
-
 $commandOpts = 'f:';
 $scriptArguments = getopt($commandOpts);
 require_once("../lib/functions.php");
@@ -16,12 +15,20 @@ if ($scriptArguments['f'] != '') {
 
 		/* tokenize the section string -- here are the bits we are interested in. With examples. */
 
+		$previousSectionID = 0;
+
 		foreach ($lines as $line) {
+
 			if (preg_match("/^\d{4}/", $line)) { // we're only interested in lines that begin with a year (like 2010).
 				$lineFragments = preg_split("/\t/", $line, -1, PREG_SPLIT_NO_EMPTY);
 				$sectionInfo = array();
 				list ($sectionInfo['sectionYear'], $sectionInfo['sectionTerm']) = preg_split("|/|", $lineFragments[0]); // split 2010/FA into the two bits we want
 				list ($sectionInfo['sectionPrefix'], $sectionInfo['sectionCourseNumber'], $sectionInfo['sectionNumber']) = preg_split("/\*/", $lineFragments[1]); // ditto for ANTH*1000*FR01A
+
+				/* the last element, element 6 in the line, contains the email address of the 'primary' instructor.  Subsequent instructors are on lines below this one, indented with white space */
+				if (preg_match("|^(.*?)@|", $lineFragments[6], $matches)) {
+					$sectionInfo['primaryInstructor'] = $matches[1];
+				}
 
 				$courseID = 0;
 
@@ -58,15 +65,24 @@ if ($scriptArguments['f'] != '') {
 					if ($returnStatement->RecordCount() == 0) { // does not exist
 						$sql = "INSERT INTO section (sectionID, year, term, sectionNumber, courseID, visible) VALUES (0, ?, ?, ?, ?, '1')";
 						$returnStatement = $db->Execute($sql, array($sectionInfo['sectionYear'], $sectionInfo['sectionTerm'], $sectionInfo['sectionNumber'], $courseID));
+						$previousSectionID = $db->Insert_ID();
+					} else {
+						$recordRow = $returnStatement->FetchNextObject();
+						$previousSectionID = $recordRow->SECTIONID;
+						$sql = "INSERT INTO sectionRole (sectionRoleID, roleID, sectionID, userName) VALUES (0, '2', ?, ?)";
+						$returnStatement = $db->Execute($sql, array($previousSectionID, $sectionInfo['primaryInstructor']));
 					}
 				}
+			} else if (preg_match("/^\s+(.*?)@.+$/", $line, $matches)) { /* this is a line with just an email address.  It's an instructor for the previous section line. Grab userID. */
+				$instructorUserID = $matches[1];
+				$sql = "INSERT INTO sectionRole (sectionRoleID, roleID, sectionID, userName) VALUES (0, '2', ?, ?)";
+				$returnStatement = $db->Execute($sql, array($previousSectionID, $instructorUserID));
 			}
 		}
-
 	} else {
 		print "$fileName does not exist or is not readable.\n";
 	}
 } else {
 	print "Usage: php importSections.php -f <yourSectionDataFile>\n";
-}
+	}
 ?>

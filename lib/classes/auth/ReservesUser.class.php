@@ -4,6 +4,7 @@ class ReservesUser {
 
 	var $_userAttributes = array('reservesUserID' => 0, 'commonName' => 'Guest');
 
+	const ROLE_SECTION_STUDENT = 0;
 	const ROLE_SECTION_TA = 1;
 	const ROLE_SECTION_INSTRUCTOR = 2;
 	const ROLE_SECTION_ADMINISTRATOR = 3;
@@ -190,9 +191,9 @@ class ReservesUser {
 	}
 
 	/**
-	 * @brief provides labels for role IDs for display purposes
-	 * @param int $roleID the role ID to display
-	 * @return String the label
+	 * @brief provides labels for role IDs for display purposes.  This does NOT include ROLE_SECTION_STUDENT.
+	 * @param int $roleID the role ID to display.
+	 * @return String the label.
 	 */
 	public static function mapRoleIDToCommonName($roleID = 0) {
 		$roles = array(
@@ -203,6 +204,8 @@ class ReservesUser {
 
 		if ($roleID > 0) {
 			return $roles[$roleID];
+		} else {
+			return $roles;
 		}
 	}
 
@@ -390,11 +393,14 @@ class ReservesUser {
 				case 'assignInstructors':
 				case 'createNewReserve':
 				case 'createNewSection':
+				case 'deleteItemHeading':
+				case 'deleteReservesRecord':
+				case 'editItemHeading':
 				case 'editSection':
 				case 'findInstructorAssign':
 				case 'itemHeadings':
 				case 'reorderItemHeadings':
-				case 'deleteReservesRecord':
+				case 'unenrolStudents':
 
 					if ($this->_canEditThisSectionBySectionID($objectID)) {
 						return true;
@@ -504,7 +510,7 @@ class ReservesUser {
 				$section = Section::getSectionFromCalendarCode($sectionCode);
 				$accountType = $this->isActing() ? $this->getAssumedAccountType() : $this->getAccountType();
  				if ($section)
-					$section->assignSectionRoleForUserID($username, $accountType == $config->getSetting('ldap', 'staff_field_string') ? self::ROLE_SECTION_INSTRUCTOR : '0');
+					$section->assignSectionRoleForUserID($username, $accountType == $config->getSetting('ldap', 'staff_field_string') ? self::ROLE_SECTION_INSTRUCTOR : self::ROLE_SECTION_STUDENT);
 			}
 
 			$sqlParams = array($username);

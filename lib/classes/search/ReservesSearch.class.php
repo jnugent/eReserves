@@ -12,7 +12,7 @@ class ReservesSearch {
 	 * @param $keywords the string to look for
 	 * @return array an array of Course objects that matched, or an empty array if none.
 	 */
-	static function searchCourses(&$keywords, $offset = 0) {
+	static function searchCourses(&$keywords, $semester, $offset = 0) {
 
 		$db = getDB();
 		import('items.Course');
@@ -23,18 +23,31 @@ class ReservesSearch {
 		}
 		$fields = Course::getSearchFields($only_prefix);
 
-		$whereClause = self::buildMySQLWhereClause($fields, $keywords, $db);
+		$semesterSQL = '';
+		$sqlParams = array();
+		if ($semester != '') {
+			if (preg_match('|^(\d+)(\w{2})$|', $semester, $matches)) {
+				$year = $matches[1];
+				$term = $matches[2];
+
+				$semesterSQL = ', section s WHERE s.courseID = c.courseID AND s.year = ? AND s.term = ?';
+				$sqlParams = array($year, $term);
+			}
+		}
+
+		$whereClause = self::buildMySQLWhereClause($fields, $keywords, $semesterSQL, $db);
 		$limitClause = " LIMIT $offset, 25";
 
 		/* first query to get the total number of records */
 		$sql = 'SELECT count(c.courseID) AS total FROM course c ' . $whereClause;
-		$returnStatement = $db->Execute($sql);
+
+		$returnStatement = $db->Execute($sql, $sqlParams);
 		$recordObject = $returnStatement->FetchNextObject();
 		$totalRecords = $recordObject->TOTAL;
 
 		if ($totalRecords > 0) { // there's no point in doing the real query again, if we have zero records that matched the full one
 			$sql = 'SELECT c.courseID FROM course c ' . $whereClause . $limitClause;
-			$returnStatement = $db->Execute($sql);
+			$returnStatement = $db->Execute($sql, $sqlParams);
 			if ($returnStatement->RecordCount() > 0) {
 				import('items.Course');
 				$matchedCourses = array();
@@ -111,9 +124,16 @@ class ReservesSearch {
 	 * @param $db
 	 * @return String the WHERE fragment
 	 */
-	static function buildMySQLWhereClause($fields, $keywords, &$db) {
+	static function buildMySQLWhereClause($fields, $keywords, $semesterSQL, &$db) {
 
-		$returner =  "WHERE MATCH (" . join(',', $fields) . ") AGAINST (" . $db->qstr($keywords) . " IN BOOLEAN MODE)";
+		$match = "MATCH (" . join(',', $fields) . ") AGAINST (" . $db->qstr($keywords) . " IN BOOLEAN MODE)";
+
+		if ($semesterSQL == '') {
+			$returner =  "WHERE " . $match;
+		} else {
+			$returner = $semesterSQL . " AND " . $match;
+		}
+
 		return $returner;
 	}
 }

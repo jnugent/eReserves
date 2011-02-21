@@ -3,14 +3,16 @@
 {% block listspace %}
 
 	{% if section.getSectionID > 0 %}
-	
-		<h1>{{ section.getCalendarCourseCode }} - {{ section.getCourseName }} <br />
+		{% set instructors = section.getInstructors %}	
+		<h1>{{ section.getPrefix }} {{ section.getNumber }} - {{ section.getCourseName }} <br />
+			<span class="small">{{ section.getCalendarCourseCode }}{% if instructors != '' %}, Instructors: {{ instructors }}{% endif %}</span>
+		</h1>
 			{%if user.isAdmin %}(<a href="{{ basePath }}/index.php/editSection/{{ section.getSectionID }}">Edit Section</a>){% endif %}
 			{%if user.canAdministerSection(section.getSectionID) %}(<a href="{{ basePath }}/index.php/assignInstructors/{{ section.getSectionID }}">Assign Instructors</a>){% endif %}
-		</h1>
+
 		
 		{% if itemHeadings|length == 0 %}
-			<p>No item headings were found for this section.</p>
+			<p>No item headings were found for this section. {%if user.canAdministerSection(section.getSectionID) %}<a href="{{ basePath }}/index.php/itemHeadings/{{ section.getSectionID }}/0">Create a Heading</a>?{% endif %}</p>
 		{% else %}
 		
 		<table id="itemHeadings" class="reservesTable">

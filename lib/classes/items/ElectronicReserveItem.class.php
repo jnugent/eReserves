@@ -10,7 +10,7 @@ class ElectronicReserveItem extends ReserveItem {
 
 		if ($electronicItemID > 0) {
 			$db = getDB();
-			$sql = "SELECT e.electronicItemID, e.mimeType, e.doi, e.reservesRecordID, e.usageRights, e.url, e.itemTitle, e.originalFileName, e.restrictToLogin
+			$sql = "SELECT e.electronicItemID, e.mimeType, e.doi, e.reservesRecordID, e.usageRights, e.url, e.itemTitle, e.originalFileName, e.restrictToLogin, e.restrictToEnroll
 					 FROM electronicItem e WHERE e.electronicItemID = ?";
 			$returnStatement = $db->Execute($sql, array($electronicItemID));
 			if ($returnStatement->RecordCount() ==  1) {
@@ -37,6 +37,15 @@ class ElectronicReserveItem extends ReserveItem {
 	function getElectronicItemID() {
 		$returner = $this->getAttribute('electronicitemid');
 		return $returner;
+	}
+
+	/**
+	 * @brief returns the parent container Reserves Record
+	 * @return ReservesRecord
+	 */
+	function getReservesRecord() {
+		import ('items.ReservesRecord');
+		return new ReservesRecord($this->getAttribute('reservesrecordid'));
 	}
 
 	/**
@@ -68,6 +77,17 @@ class ElectronicReserveItem extends ReserveItem {
 		}
 	}
 
+	/**
+	 * @brief returns a boolean about whether or not the file requires a user to be enrolled in the section to view
+	 * @return boolean true or false
+	 */
+	function requiresEnrolment() {
+		if ($this->getAttribute('restricttoenroll') == 1) {
+			return true;
+		} else {
+			return false;
+		}
+	}
 	/**
 	 * @brief returns the original file name, used as a "save as" hint
 	 * @return String the file name
@@ -104,6 +124,7 @@ class ElectronicReserveItem extends ReserveItem {
 		$reservesrecordid = ReservesRequest::getRequestValue('reservesrecordid');
 		$usagerights = ReservesRequest::getRequestValue('usagerights');
 		$restricttologin = ReservesRequest::getRequestValue('restricttologin') != '' ? '1' : '0';
+		$restricttoenroll = ReservesRequest::getRequestValue('restricttoenroll') != '' ? '1' : '0';
 
 		$url = ReservesRequest::getRequestValue('url');
 		$mimetype = '';
@@ -129,13 +150,14 @@ class ElectronicReserveItem extends ReserveItem {
 
 		$electronicItemIDs = array();
 		foreach ($reservesrecordids as $reservesrecordid) {
-			$sqlParams = array($itemtitle, $doi, $mimetype, $url, $usagerights, $reservesrecordid, $originalfilename, $restricttologin, $electronicitemid);
+			$sqlParams = array($itemtitle, $doi, $mimetype, $url, $usagerights, $reservesrecordid, $originalfilename, $restricttologin, $restricttoenroll, $electronicitemid);
 			if ($electronicitemid > 0) {
-				$sql = "UPDATE electronicItem SET itemTitle = ?, doi = ?, mimeType = ?, url = ?, usageRights = ?, reservesRecordID = ?, originalFileName = ?, restrictToLogin = ?
+				$sql = "UPDATE electronicItem SET itemTitle = ?, doi = ?, mimeType = ?, url = ?, usageRights = ?, reservesRecordID = ?, originalFileName = ?, restrictToLogin = ?,
+						restrictToEnroll = ?
 						WHERE electronicItemID = ?";
 			} else {
-				$sql = "INSERT INTO electronicItem (itemTitle, doi, mimeType, url, usageRights, reservesRecordID, originalFileName, restrictToLogin, electronicItemID)
-					VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
+				$sql = "INSERT INTO electronicItem (itemTitle, doi, mimeType, url, usageRights, reservesRecordID, originalFileName, restrictToLogin, restrictToEnroll, electronicItemID)
+					VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
 			}
 			$returnStatement = $db->Execute($sql, $sqlParams);
 			if ($returnStatement) {
@@ -217,6 +239,7 @@ class ElectronicReserveItem extends ReserveItem {
 		$fieldSet->addField($radio);
 
 		$fieldSet->addField(new Checkbox( array('name' => 'restricttologin', 'primaryLabel' => 'Require logins to view?', 'secondaryLabel' => 'only for uploaded files' ,'value' => $this->getAttribute('restricttologin')) ) );
+		$fieldSet->addField(new Checkbox( array('name' => 'restricttoenroll', 'primaryLabel' => 'Require section enrolment?', 'secondaryLabel' => 'only for uploaded files' ,'value' => $this->getAttribute('restricttoenroll')) ) );
 
 		$fieldSet->addField(new TextField( array( 'primaryLabel' => 'Item URL', 'secondaryLabel' => 'Full URL', 'name' => 'url',
 							'value' => $fileChoiceValue == 'filechoiceurl' ? $this->getAttribute('url') : '', 'requiredMsg' => 'Please enter a full URL',

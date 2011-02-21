@@ -11,7 +11,8 @@
 	{% endif %}
 	
 	{% if user.isActing %}
-		<p style="padding: 2px; background-color: #ffffcc; text-align: center; ">You have assumed the role of <em>{{ user.getAssumedFullName }}</em> (<a href="{{ basePath }}/index.php/assumeUserRole/">stop</a>)</p>
+		<p style="padding: 2px; background-color: #ffffcc; text-align: center; ">You have assumed the role 
+			of <em>{{ user.getAssumedFullName }}</em> (<a href="{{ basePath }}/index.php/assumeUserRole/">stop</a>)</p>
 	{% endif %}
 {% endblock %}
 
@@ -31,5 +32,5 @@
 	{% block listspace %}{% endblock %}
 	
 {% endblock %}
-
+{{ extraJS }}
 {{ page.getFooter(user) }}

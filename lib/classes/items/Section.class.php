@@ -119,7 +119,7 @@ class Section extends ElectronicReserveItem {
 		$sql = $db->Prepare('SELECT count(r.itemHeadingID) AS reservesTotal FROM reservesRecord r, itemHeading i, section s WHERE
 							r.itemHeadingID = i.itemHeadingID AND i.sectionID = s.sectionID AND s.year = ? AND s.term = ?');
 
-		for ($year = $fiveYearsPrior ; $year <= $fiveYearsHence ; $year ++) {
+		for ($year = $fiveYearsHence ; $year >= $fiveYearsPrior ; $year --) {
 			if (!$noFutureYears || $year <= $currentYear) {
 				foreach ($semesterTerms as $term) {
 					$sqlParams = array($year, $term);
@@ -129,7 +129,6 @@ class Section extends ElectronicReserveItem {
 				}
 			}
 		}
-
 		return $semesters;
 	}
 
@@ -191,22 +190,34 @@ class Section extends ElectronicReserveItem {
 		$action = 'viewAllReserves';
 		$form = new Form(array('id' => 'viewAllReserves', 'method' => 'get', 'action' => '/reserves/index.php/' . $action . '/0'));
 		$fieldSet = new FieldSet(array('legend' => 'Choose Semester'));
-		$semesters = self::_getPlausibleSemesters(TRUE);
 
-		if ($semester == '') {
+		$select = self::getSemesterDropdown($semester);
+
+		$fieldSet->addField($select);
+		$form->addFieldSet($fieldSet);
+
+		return $form;
+	}
+
+	static function getSemesterDropdown($all = FALSE, $semester = '') {
+		$semesters = self::_getPlausibleSemesters(TRUE);
+		if ($semester == '' && $all) {
 			$semester = self::getCurrentSemester();
 		}
-		$select = new Select( array('name' => 'semester', 'primaryLabel' => 'Course Semester', 'secondaryLabel' => 'Those with reserves are marked', 'required' => true,
+		$required = $all ? true : false;
+		$secondaryLabel = !$required ? 'Leave empty to search all semesters' : 'Those with reserves are marked';
+		$select = new Select( array('name' => 'semester', 'primaryLabel' => 'Course Semester', 'secondaryLabel' => $secondaryLabel, 'required' => $required,
 				'requiredMsg' => 'Please choose a semester', 'value' => $semester, 'onChange' => 'switchSemesters()') );
+		if (!$all) {
+			$select->addOption( array('value' => '', 'label' => '------') );
+		}
 		foreach ($semesters as $semesterName => $semesterReservesCount) {
 			$label = $semesterName;
 			$label .= $semesterReservesCount > 0 ? " ($semesterReservesCount)" : "";
 			$select->addOption( array('value' => $semesterName, 'label' => $label) );
 		}
-		$fieldSet->addField($select);
-		$form->addFieldSet($fieldSet);
 
-		return $form;
+		return $select;
 	}
 
 	/**
@@ -267,8 +278,8 @@ class Section extends ElectronicReserveItem {
 
 	/**
 	 * @brief returns the role assigned to the given user id, for this course.
-	 * @param $reservesUserName the user name
-	 * @return int the role, or 0 if this user has nothing to do with this course
+	 * @param $reservesUserName the user name.
+	 * @return int the role, or 0 if this user has nothing to do with this course.
 	 */
 	function getSectionRoleForUserID($reservesUserName) {
 
@@ -280,20 +291,56 @@ class Section extends ElectronicReserveItem {
 			$roleID = $recordObject->ROLEID;
 			return $roleID;
 		} else {
-			return 0;
+			return false;
 		}
 	}
 
 	/**
-	 * @brief returns a list of usernames and the roles that have been assigned to them, for this section.
-	 * @return Array the users and roles
+	 * @brief determines if a student is enroled in this section or not.
+	 * @param String $reservesUserName the name to check.
+	 * @return boolean true or false.
 	 */
-	function getSectionRoles() {
+	function userIsEnrolled($reservesUserName) {
+		$db = getDB();
+		$sql = "SELECT r.sectionRoleID FROM sectionRole r WHERE r.sectionID = ? AND r.userName = ?";
+		$returnStatement = $db->Execute($sql, array($this->getSectionID(), $reservesUserName));
+		if ($returnStatement->RecordCount() ==  1) {
+			return true;
+		} else {
+			return false;
+		}
+	}
+
+	/**
+	 * @brief removes all student associations with this section. Does NOT remove instructor records.
+	 * @return boolean true or false, success or failure.
+	 */
+	function unenrolStudents() {
 		import('auth.ReservesUser');
 
 		$db = getDB();
-		$sql = "SELECT r.roleID, r.userName FROM sectionRole r WHERE r.sectionID = ? AND r.roleID != '0' ORDER BY r.userName ASC";
-		$returnStatement = $db->Execute($sql, array($this->getSectionID()));
+		$sql = "DELETE FROM sectionRole WHERE sectionID = ? AND roleID = ?";
+		$returnStatement = $db->Execute($sql, array($this->getSectionID(), ReservesUser::ROLE_SECTION_STUDENT));
+		if ($returnStatement) {
+			return true;
+		} else {
+			return false;
+		}
+	}
+	/**
+	 * @brief returns a list of usernames and the roles that have been assigned to them, for this section.
+	 * @return Array the users and roles.
+	 */
+	function getSectionRoles($filter = 0) {
+		import('auth.ReservesUser');
+
+		$db = getDB();
+		if ($filter == 0) {
+			$sql = "SELECT r.roleID, r.userName FROM sectionRole r WHERE r.sectionID = ? AND r.roleID != '0' ORDER BY r.userName ASC";
+		} else {
+			$sql = "SELECT r.roleID, r.userName FROM sectionRole r WHERE r.sectionID = ? AND r.roleID = ? ORDER BY r.userName ASC";
+		}
+		$returnStatement = $db->Execute($sql, array($this->getSectionID(), $filter));
 		$sectionUsers = array();
 		while ($returnObject = $returnStatement->FetchNextObject()) {
 			$sectionUsers[$returnObject->USERNAME] = array('roleID' => $returnObject->ROLEID, 'roleDesc' => ReservesUser::mapRoleIDToCommonName($returnObject->ROLEID));
@@ -302,6 +349,19 @@ class Section extends ElectronicReserveItem {
 		return $sectionUsers;
 	}
 
+	function getInstructors() {
+
+		import('auth.ReservesUser');
+		import('auth.LDAPConnection');
+		$sectionUsers = $this->getSectionRoles(ReservesUser::ROLE_SECTION_INSTRUCTOR);
+		$instructors = array();
+		foreach ($sectionUsers as $username => $role) {
+			$userEntry = LDAPConnection::getUserLDAPInfo($username);
+			$instructors[] = $userEntry['cn'][0];
+		}
+
+		return join(', ', $instructors);
+	}
 	/**
 	 * @brief adds or updates a role for a user, for this section
 	 * @param String $reservesUserName
@@ -384,6 +444,22 @@ class Section extends ElectronicReserveItem {
 		return new ItemHeading($itemHeadingID);
 	}
 
+	/**
+	 * @brief deletes an ItemHeading object assigned to this Section.
+	 * @param int $itemHeadingID the ID of the heading to remove.
+	 * @return boolean true or false on success or failure.
+	 */
+	function deleteHeading($itemHeadingID) {
+		$db = getDB();
+		/* it is important to constrain this to the sectionID.  Otherwise Sections could delete Headings that are not their own */
+		$sql = "DELETE FROM itemHeading WHERE itemHeadingID = ? AND sectionID = ?";
+		$returnStatement = $db->Execute($sql, array($itemHeadingID, $this->getSectionID()));
+		if ($returnStatement) {
+			return true;
+		} else {
+			return false;
+		}
+	}
 	/**
 	 * @brief returns a total number of reserves assigned to this section.  Used to generate a list on the viewSections template.
 	 * @return int the number of reserves in the section
@@ -495,12 +571,7 @@ class Section extends ElectronicReserveItem {
 		$fieldSet = new FieldSet(array('legend' => $label));
 		$fieldSet->addField(new HiddenField( array('required' => true, 'name' => 'sectionid', 'value' => $this->getSectionID()) ));
 
-		$semesters = $this->_getPlausibleSemesters();
-		$select = new Select( array('name' => 'semester', 'primaryLabel' => 'Course Semester', 'secondaryLabel' => 'Choose one', 'required' => true,
-				'requiredMsg' => 'Please choose a semester', 'value' => $this->getAttribute('year') . $this->getAttribute('term')) );
-		foreach ($semesters as $semester) {
-			$select->addOption( array('value' => $semester) );
-		}
+		$select = self::getSemesterDropdown(TRUE, $this->getAttribute('year') . $this->getAttribute('term'));
 		$fieldSet->addField($select);
 
 		unset ($select);

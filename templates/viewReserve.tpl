@@ -92,8 +92,10 @@
 			{% for item in electronicItems %}
 				<tr>
 					<td>{{ item.getTitle }}</td>
-					{% if not item.isRestricted or user.isLoggedIn %}
+					{% if not item.isRestricted or user.isAdmin or ( user.isLoggedIn and not item.requiresEnrolment ) or reservesRecord.getSection.userIsEnrolled(user.getUserName) %}
 						<td><a href="{{ item.getURL }}">{{ item.getLinkTitle }}</a></td>
+					{% elseif item.requiresEnrolment %}
+						<td>{{ item.getLinkTitle }} (you must be enroled to view this)</td>
 					{% else %}
 						<td>{{ item.getLinkTitle }} (<a href="#" onClick="$('#loginForm').slideToggle(); $('#username').focus();">login</a> to access)</td>
 					{% endif %}

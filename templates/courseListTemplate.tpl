@@ -8,13 +8,13 @@
 		<tr>
 			<td colspan="2">
 				{% if pageOffset > 0 %}
-				<a href="{{ basePath }}/index.php/{{ action }}/0/{{ pageOffset - 25 }}{% if action == 'quickSearch' %}/{{ keywords|urlencode }}{% endif %}">View Previous Page</a>
+				<a href="{{ basePath }}/index.php/{{ action }}/0/{{ pageOffset - 25 }}{% if action == 'quickSearch' %}/{{ keywords|urlencode }}/{{ semester|urlencode }}{% endif %}">View Previous Page</a>
 				{% endif %}
 			</td>
 			<td>&nbsp;</td>
 			<td style="text-align: right;">
 				{% if courses|length == 25 %}
-				<a href="{{ basePath }}/index.php/{{ action }}/0/{{ pageOffset + 25 }}{% if action == 'quickSearch' %}/{{ keywords|urlencode }}{% endif %}">View Next Page</a>
+				<a href="{{ basePath }}/index.php/{{ action }}/0/{{ pageOffset + 25 }}{% if action == 'quickSearch' %}/{{ keywords|urlencode }}/{{ semester|urlencode }}{% endif %}">View Next Page</a>
 				{% endif %}
 			</td>
 		</tr>
