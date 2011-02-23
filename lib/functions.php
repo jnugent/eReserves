@@ -43,6 +43,28 @@ function performOp($op, $objectID, &$reservesUser, $extraArgs = array()) {
 		case '':
 		break;
 
+		case 'assumeUserRole':
+
+			if ($extraArgs[0] != '') {
+
+				import('general.ReservesRequest');
+				$assumedEmailID = $extraArgs[0];
+				import('auth.LDAPConnection');
+				$ldapInfo = LDAPConnection::getUserLDAPInfo($assumedEmailID);
+				import('general.Config');
+				$config = new Config();
+				$accountTypeField = $config->getSetting('ldap', 'account_type_field');
+
+				/* for professors, the accountTypeField will hold the string 'faculty' */
+				$_SESSION['assumedUserInfo'] = array('uid' => $ldapInfo['uid'][0], 'cn' => $ldapInfo['cn'][0], 'accountType' => $ldapInfo[$accountTypeField][0]);
+				$op = 'viewCourses'; // as a default, redirect to the person's course list
+			} else {
+				unset($_SESSION['assumedUserInfo']); // if the page is called with no argument, destroy the array and turn it off
+				$op = ReservesRequest::getReferringPage();
+			}
+			ReservesRequest::doRedirect($op);
+		break;
+
 		case 'login':
 
 			// Form::isValidSubmission returns true, or an array of strings with the names of the missing fields
@@ -86,13 +108,26 @@ function performOp($op, $objectID, &$reservesUser, $extraArgs = array()) {
 			import('items.ItemHeading');
 			$validSubmission = Form::isValidSubmission();
 			if ($validSubmission) {
-				if (isCreationAttempt($extraArgs)) {
-					$itemHeading = new ItemHeading();
-				} else {
-					$itemHeading = new ItemHeading($objectID);
-				}
+				$itemHeadingID = intval($extraArgs[0]) > 0 ? intval($extraArgs[0]) : '0';
+				$itemHeading = new ItemHeading($itemHeadingID);
 
 				$itemHeading->update();
+				return true;
+			}
+		break;
+
+		case 'editItemHeading':
+
+			import('items.ItemHeading');
+
+			$itemHeadingID = 0;
+			if (preg_match("{^headingTitleText-(\d+)$}", $extraArgs[0], $matches)) {
+				$itemHeadingID = $matches[1];
+			}
+
+			if ($itemHeadingID > 0) {
+				$itemHeading = new ItemHeading($itemHeadingID);
+				$itemHeading->updateTitle();
 				return true;
 			}
 		break;
@@ -232,36 +267,15 @@ function performOp($op, $objectID, &$reservesUser, $extraArgs = array()) {
 
 		break;
 
-		case 'assumeUserRole':
-
-			if ($extraArgs[0] != '') {
-
-				import('general.ReservesRequest');
-				$assumedEmailID = $extraArgs[0];
-				import('auth.LDAPConnection');
-				$ldapInfo = LDAPConnection::getUserLDAPInfo($assumedEmailID);
-				import('general.Config');
-				$config = new Config();
-				$accountTypeField = $config->getSetting('ldap', 'account_type_field');
-
-				/* for professors, the accountTypeField will hold the string 'faculty' */
-				$_SESSION['assumedUserInfo'] = array('uid' => $ldapInfo['uid'][0], 'cn' => $ldapInfo['cn'][0], 'accountType' => $ldapInfo[$accountTypeField][0]);
-				$op = 'viewCourses'; // as a default, redirect to the person's course list
-			} else {
-				unset($_SESSION['assumedUserInfo']); // if the page is called with no argument, destroy the array and turn it off
-				$op = ReservesRequest::getReferringPage();
-			}
-			ReservesRequest::doRedirect($op);
-		break;
-
 		case 'quickSearch':
 
 			$validSubmission = Form::isValidSubmission();
 			if ($validSubmission || $extraArgs[1] != '') {
 				import('search.ReservesSearch');
 				$keywords = ReservesRequest::getRequestValue('keywords') != '' ? ReservesRequest::getRequestValue('keywords') : $extraArgs[1];
+				$semesterLimit = ReservesRequest::getRequestValue('semester') != '' ? ReservesRequest::getRequestValue('semester') : $extraArgs[2];
 				$pageOffset = intval($extraArgs[0]) > 0 ? intval($extraArgs[0]) : 0;
-				$reserveCourses = ReservesSearch::searchCourses($keywords, $pageOffset);
+				$reserveCourses = ReservesSearch::searchCourses($keywords, $semesterLimit, $pageOffset);
 				return $reserveCourses;
 			}
 		break;
@@ -299,14 +313,14 @@ function performOp($op, $objectID, &$reservesUser, $extraArgs = array()) {
 				$url = $item->getAttribute('url');
 				$mimeType = $item->getAttribute('mimeType');
 				$originalFileName = $item->getAttribute('originalFileName');
-				$restrictToLogin = $item->getAttribute('restrictToLogin');
-				if ($restrictToLogin == 0 || $reservesUser->isLoggedIn()) {
+				if ( !$item->isRestricted() || $reservesUser->isAdmin() || ($reservesUser->isLoggedIn() && !$item->requiresEnrolment())
+					|| ($item->getReservesRecord()->getSection()->userIsEnrolled($reservesUser->getUserName())) ) {
 					header('Content-Type: ' . $mimeType);
 //					header('Content-Disposition: attachment; filename="' . urlencode($originalFileName) . '"');
 //					header('Content-Length: ' . filesize($url));
 					echo file_get_contents($url);
 				} else {
-					return false;
+					ReservesRequest::doRedirect('securityException');
 				}
 			}
 		break;
@@ -468,5 +482,36 @@ function accessOPACRecord($cmd, $recordDetails = array()) {
 	} else {
 		return true;
 	}
+}
+
+/**
+ * @brief convenience method for building the AJAX to submit the quickSearch form.  Needed to correctly
+ * build the URL for document.location calls, so the "previous page" referring doc works correctly.
+ * @param $basePath the Config setting (ie, /reserves).
+ * @return String the JavaScript AJAX snippet.
+ */
+function getQuickSearchAJAX($basePath) {
+
+	$quickSearchAJAX = '
+	<script type="text/javascript">
+
+		$().ready(function() {
+			$(\'#searchReserves\').submit(function() {
+
+					keywords = encodeURIComponent($(\'#keywords\').attr(\'value\'));
+					section  = encodeURIComponent($(\'#semester\').attr(\'value\'));
+					url = "' . ${basePath} . '/index.php/quickSearch/0/0/" + keywords;
+					if (section != "") {
+						url += "/" + section;
+					}
+					document.location = url;
+					return false;
+				}
+			);
+		});
+
+	</script>';
+
+	return $quickSearchAJAX;
 }
 ?>

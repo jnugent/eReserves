@@ -186,7 +186,7 @@ class ReservesPage {
 				$templateState['forms'] = $formsArray;
 				break;
 
-			case 'assignInstructors':
+			case 'assignPeople':
 
 				import('items.Section');
 				$section = new Section($objectID);
@@ -194,9 +194,9 @@ class ReservesPage {
 				$templateState['sectionID'] = $objectID;
 
 				$formsArray = array();
-				$form = new Form(array('id' => 'assignInstructors', 'method' => 'post', 'action' => $basePath . '/index.php/assignInstructors/' . $section->getSectionID()));
-				$fieldSet = new FieldSet(array('legend' => 'Assign Instructors'));
-				$fieldSet->addField(new TextField( array('name' => 'instructor', 'primaryLabel' => 'Instructor', 'secondaryLabel' => 'The user ID (not name) of the person to add',
+				$form = new Form(array('id' => 'assignPeople', 'method' => 'post', 'action' => $basePath . '/index.php/assignPeople/' . $section->getSectionID()));
+				$fieldSet = new FieldSet(array('legend' => 'Assign People to this Section'));
+				$fieldSet->addField(new TextField( array('name' => 'instructor', 'primaryLabel' => 'Person', 'secondaryLabel' => 'The user ID (not name) of the person to add',
 							'required' => true, 'requiredMsg' => 'You must enter a User ID', 'value' => '') ));
 				$select = new Select(array('name' => 'roleID', 'primaryLabel' => "User's Role", 'secondaryLabel' => 'Choose ' . $secondaryLabel, 'required' => true,
 				'requiredMsg' => 'Please choose a role for this user', 'value' => ''));

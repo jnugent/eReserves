@@ -73,7 +73,7 @@
 			}
 
 			function showUnenrolModal(sectionID) {
-				$("#unenrolLinkConfirm").html('You will remove all students (not instructors) from this Section.  This cannot be undone.  Are you sure?');
+				$("#unenrolLinkConfirm").html('You will remove all students (not instructors) from this Section.  This will NOT alter their Registrar information.  This cannot be undone.  Are you sure?');
 				$("#unenrolLinkConfirm").dialog("option", 
 					"buttons", [
 						{ text: "Ok", click: function() {

@@ -8,7 +8,7 @@
 			<span class="small">{{ section.getCalendarCourseCode }}{% if instructors != '' %}, Instructors: {{ instructors }}{% endif %}</span>
 		</h1>
 			{%if user.isAdmin %}(<a href="{{ basePath }}/index.php/editSection/{{ section.getSectionID }}">Edit Section</a>){% endif %}
-			{%if user.canAdministerSection(section.getSectionID) %}(<a href="{{ basePath }}/index.php/assignInstructors/{{ section.getSectionID }}">Assign Instructors</a>){% endif %}
+			{%if user.canAdministerSection(section.getSectionID) %}(<a href="{{ basePath }}/index.php/assignPeople/{{ section.getSectionID }}">Assign People</a>){% endif %}
 
 		
 		{% if itemHeadings|length == 0 %}

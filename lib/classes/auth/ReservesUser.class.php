@@ -5,9 +5,10 @@ class ReservesUser {
 	var $_userAttributes = array('reservesUserID' => 0, 'commonName' => 'Guest');
 
 	const ROLE_SECTION_STUDENT = 0;
-	const ROLE_SECTION_TA = 1;
-	const ROLE_SECTION_INSTRUCTOR = 2;
-	const ROLE_SECTION_ADMINISTRATOR = 3;
+	const ROLE_SECTION_SPECIAL_ENROL = 1;
+	const ROLE_SECTION_TA = 2;
+	const ROLE_SECTION_INSTRUCTOR = 3;
+	const ROLE_SECTION_ADMINISTRATOR = 4;
 
 	function __construct() {
 
@@ -197,6 +198,7 @@ class ReservesUser {
 	 */
 	public static function mapRoleIDToCommonName($roleID = 0) {
 		$roles = array(
+						self::ROLE_SECTION_SPECIAL_ENROL => 'Enroled By Instructor',
 						self::ROLE_SECTION_TA => 'Section Teaching Assistant',
 						self::ROLE_SECTION_INSTRUCTOR => 'Section Instructor',
 						self::ROLE_SECTION_ADMINISTRATOR => 'Reserves Administrator'
@@ -390,7 +392,7 @@ class ReservesUser {
 		} else { // this is an op that requires special privileges or depends on a object ID or an object's status
 			switch ($op) {
 
-				case 'assignInstructors':
+				case 'assignPeople':
 				case 'createNewReserve':
 				case 'createNewSection':
 				case 'deleteItemHeading':
