@@ -125,6 +125,10 @@ class PhysicalReserveItem extends ReserveItem {
 		accessOPACRecord(self::PHYSICAL_RESERVE_ITEM_QUERY, $this->_properties);
 	}
 
+	function getURL() {
+		$url = "javascript:getOPACRecord('" . $this->getPhysicalItemID() . "')";
+		return $url;
+	}
 	/**
 	 * @brief  updates or creates an ElectronicReservesItem.
 	 * @return boolean true or false on success or failure

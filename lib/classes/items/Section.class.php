@@ -277,6 +277,16 @@ class Section extends ElectronicReserveItem {
 	}
 
 	/**
+	 * @brief this concatenates the relevant bits of the course prefix and number to return a shorter version of the course code.
+	 * @return String the short code for the course
+	 */
+	function getShortCourseCode() {
+
+		$returner = $this->getAttribute('prefix') . '*' . $this->getAttribute('coursenumber');
+		return $returner;
+	}
+
+	/**
 	 * @brief returns the role assigned to the given user id, for this course.
 	 * @param $reservesUserName the user name.
 	 * @return int the role, or 0 if this user has nothing to do with this course.

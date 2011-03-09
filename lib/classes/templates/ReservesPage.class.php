@@ -78,11 +78,9 @@ class ReservesPage {
 			<link href="https://ajax.googleapis.com/ajax/libs/jqueryui/1.8/themes/base/jquery-ui.css" rel="stylesheet" type="text/css"/>
 			<link rel="stylesheet" type="text/css" media="screen" href="/core/css/validforms.css" />
 			<script src="/core/js/jquery.validate.js" type="text/javascript"></script>
-			<script src="/core/js/jquery.tablednd_0_5.js" type="text/javascript"></script>';
-
-
-			echo '</head>
-			<body class="twoCol lite reserves">';
+			<script src="/core/js/jquery.tablednd_0_5.js" type="text/javascript"></script>
+		</head>
+		<body class="twoCol lite reserves">';
 
 		include_once ("/www/core/inc/headnav.php");
 

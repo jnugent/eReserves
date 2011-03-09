@@ -162,6 +162,37 @@ class ReservesRecord extends ReserveItem {
 		return $electronicItems;
 	}
 
+	function getTotalNumberOfItems(&$reservesUser) {
+
+		$physicalCount = sizeof($this->getPhysicalItems($reservesUser, TRUE));
+		$electronicCount = sizeof($this->getElectronicItems(TRUE));
+
+		$total = $physicalCount + $electronicCount;
+		return $total;
+	}
+
+	function getSingleItem(&$reservesUser, $basePath) {
+
+		$physicalItems = $this->getPhysicalItems($reservesUser, TRUE);
+		$electronicItems = $this->getElectronicItems(TRUE);
+		$item = null;
+
+		if (sizeof($physicalItems) == 1) {
+			import('items.PhysicalReserveItem');
+			$item = new PhysicalReserveItem($physicalItems[0]);
+			return array('loginRequired' => false, 'id' => $item->getPhysicalItemID(), 'title' => $this->getTitle(), 'display' => $item->getLocation(), 'info' => 'click for record info', 'url' => $item->getURL());
+		} else {
+			import('items.ElectronicReserveItem');
+			$item = new ElectronicReserveItem($electronicItems[0]);
+
+			$loginRequired = true;
+			if (!$item->isRestricted() || $reservesUser->isAdmin() || ( $reservesUser->isLoggedIn() && !$item->requiresEnrolment()) ||
+				$this->getSection()->userIsEnrolled($reservesUser->getUserName()) ) { $loginRequired = false; }
+
+			return array('loginRequired' => $loginRequired, 'id' => $item->getElectronicItemID(), 'title' => $this->getTitle(), 'display' => 'Available Online', 'info' => '<img height="25" src="' . $basePath . '/images/mimeIcons/' . $item->mapTypeToImg() . '.png" />', 'url' => $item->getURL());
+		}
+	}
+
 	/**
 	 * @brief used to set the ItemHeadings assigned to the course that the user is trying to
 	 * add this ReservesRecord to.

@@ -19,14 +19,14 @@
 				<li><a href="{{ basePath }}/index.php/viewCourses">View Your Courses</a></li>
 			{% endif %}
 	
-				 <li><a href="{{ basePath }}/index.php/browseCourses">Browse Courses</a></li>
-				 <li><a href="{{ basePath }}/index.php/viewAllReserves">View All Active Reserves</a></li>
+				 <li><a href="{{ basePath }}/index.php/viewAllReserves">View All Active Courses</a></li>
 				 <li><a href="{{ basePath }}/index.php">Quick Search</a></li>
 			</ul>
 	
 				{% if user.isAdmin and not user.isActing %}
 					<p>Administration Tasks</p>
 					<ul>
+						<li><a href="{{ basePath }}/index.php/browseCourses">Browse Courses</a></li>
 						<li><a href="{{ basePath }}/index.php/createNewCourse">Create New Course</a></li>
 						<li><a href="{{ basePath }}/index.php/viewReserves">Maintain Your Own Reserves</a></li>
 						<li><a href="{{ basePath }}/index.php/searchByUser">Find Courses for a User</a></li>

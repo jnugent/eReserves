@@ -25,6 +25,7 @@ class ElectronicReserveItem extends ReserveItem {
 		} else { // loading a blank Item, in order to create a new one.
 
 			$this->setAttribute('electronicitemid', '0');
+			$this->setAttribute('restricttoenroll', '1');
 			return true;
 		}
 
@@ -108,6 +109,28 @@ class ElectronicReserveItem extends ReserveItem {
 	function getMimeType() {
 		$returner = $this->getAttribute('mimetype');
 		return $returner;
+	}
+
+	function mapTypeToImg() {
+
+		$mimeMap = array(
+			'application/octet-stream' => 'binary',
+			'bmp',
+			'application/vnd.openxmlformats-officedocument.wordprocessingml.document' => 'doc', 'application/msword' => 'doc', 'application/rtf' => 'doc',
+			'text/' => 'html',
+			'image/' => 'image', 'image/png' => 'image', 'image/gif' => 'image', 'image/tiff' => 'image',
+			'application/x-pdf' => 'pdf', 'application/pdf' => 'pdf',
+			'audio/' => 'snd',
+			'application/vnd.ms-excel' => 'spreadsheet',
+			'video/' => 'video',
+			'application/x-gzip' => 'zip', 'application/zip' => 'zip',
+		);
+		$mimeType = $this->getMimeType();
+		foreach (array_keys($mimeMap) as $key) {
+			if (preg_match("{^" . quotemeta($key). "}", $mimeType))
+				return $mimeMap[$key];
+		}
+		return $mimeMap['application/octet-stream'];
 	}
 
 	/**

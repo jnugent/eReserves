@@ -16,21 +16,21 @@
 		Reserves are grouped according to course section.  A reserve may contain more than one file for you to download.</p> </caption>
 
 		{% set prevSectionID = 0 %}
-		
+		<tr>
+			<th>Course Name</th><th>Course Number</th><th>Instructor(s)</th>
+		</tr>
 		{% for section in sections %}
 			{% set sectionID = section.getSectionID %}
 			{% set reserves = section.getReserves %}
 			{% if sectionID != prevSectionID %}
-				{% set prevSectionID = sectionID %}
 				<tr id="section{{ sectionID }}" {% if loop.index|even %}class="plain"{% endif %}>
-					<th colspan="3" style="text-align: center">
-						<a href="{{ basePath }}/index.php/viewReserves/{{ section.getSectionID }}">{{ section.getCalendarCourseCode|e }} - {{ section.getCourseName }}</a><br />
+					<td><a href="{{ basePath }}/index.php/viewReserves/{{ section.getSectionID }}">{{ section.getCourseName }}</a></td>
+					<td>{{ section.getShortCourseCode }}</td>
 						{% set instructors = section.getInstructors %}
-						{% if instructors != '' %} Instructed by: {{ instructors }} {% endif %}
-					</th>
+					<td>{% if instructors != '' %}{{ instructors }}{% endif %}</td>
 				</tr>
 			{% endif %}
-
+<!--
 			{% for reserve in reserves %}
 				<tr id="{{ reserve.getReservesRecordID }}">
 					{% set physicalItems   = reserve.getPhysicalItems(user, sectionID, TRUE) %}
@@ -42,6 +42,7 @@
 						electronic one{% if electronicItems|length != 1 %}s{% endif %}, filed in {{ reserve.getHeadingTitle }}.</td>
 				</tr>
 			{% endfor %}
+-->
 		{% endfor %}
 	</table>
 	{% endif %}

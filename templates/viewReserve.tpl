@@ -34,10 +34,10 @@
 		</script>
 	{% endif %}
 
-	<script type="text/javascript">
+		<script type="text/javascript">
 		<!--
 		function getOPACRecord(itemID) {
-
+		
 			$("#progress").toggle();
 			$.post('{{ basePath }}/index.php/opacProxy/' + itemID, function (data) {
 					// data is valid JSON
@@ -60,8 +60,8 @@
 		}
 			
 		// -->
-	</script>
-
+		</script>
+		
 	<h1>{{ reservesRecord.getTitle }} 
 		{% if user.canAdministerSection(reservesRecord.getSectionID) %}
 			(<a href="{{ basePath }}/index.php/adminCourseReserves/{{ reservesRecord.getItemHeadingID }}/{{ reservesRecord.getReservesRecordID }}">Edit</a>
@@ -99,7 +99,7 @@
 					{% else %}
 						<td>{{ item.getLinkTitle }} (<a href="#" onClick="$('#loginForm').slideToggle(); $('#username').focus();">login</a> to access)</td>
 					{% endif %}
-					<td>{{ item.getMimeType }}</td>
+					<td align="center"><img src="{{ basePath }}/images/mimeIcons/{{ item.mapTypeToImg }}.png" height="25" /></td>
 					{% if user.canAdministerSection(reservesRecord.getSectionID) %}
 						<td><a href="{{ basePath }}/index.php/editElectronicItem/{{ item.getElectronicItemID }}">Edit</a> | <a onClick="showModal('{{ basePath }}/index.php/deleteElectronicItem/{{ item.getElectronicItemID }}')" href="#">Delete</a></td>
 					{% endif %}
