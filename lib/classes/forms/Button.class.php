@@ -20,8 +20,11 @@
 		public function display() {
 
 			$returner = '';
-			$class = $this->getProperty('buttonClass') != '' ? $this->getProperty('buttonClass') : 'tiny';
-			$returner .= '<button class="' . $class . '" type="' . $this->getProperty('type') . '">' . $this->getProperty('label') . '</button>';
+			$class = "strongButton";
+			if ($this->getProperty('buttonClass') == 'tiny') {
+				$class = "tiny";
+			}
+			$returner .= '<input class="' . $class . '" type="' . $this->getProperty('type') . '" value="' . $this->getProperty('label') . '"/>';
 			return $returner;
 		}
 

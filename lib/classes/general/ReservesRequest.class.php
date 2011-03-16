@@ -112,8 +112,16 @@ class ReservesRequest {
 	 * @return the url of the page
 	 */
 	static function getRequestURI() {
-		$returner = htmlentities($_SERVER['REQUEST_URI']);
-		return $returner;
+		$requestURI = htmlentities($_SERVER['REQUEST_URI']);
+		if (!preg_match('{loginError$}', $requestURI)) {
+			return $requestURI;
+		} else {
+			if (isset($_SERVER['HTTP_REFERER'])) {
+				if (preg_match('{https?://[^/]+(/.+)$}', $_SERVER['HTTP_REFERER'], $matches)) {
+					return $matches[1];
+				}
+			}
+		}
 	}
 
 	/**

@@ -212,8 +212,8 @@
 
 			import('general.ReservesRequest');
 			foreach ($fieldSet->getFields() as $field) {
+				$name = preg_replace("/[\[\]]/", "", $field->getProperty('name'));
 				if ($field->isRequired()) {
-					$name = preg_replace("/[\[\]]/", "", $field->getProperty('name'));
 					$this->_requiredFieldNames[$name] = get_class($field);
 				}
 				$field->setProperty('data', ReservesRequest::getRequestValue($name));

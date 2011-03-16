@@ -504,7 +504,9 @@ function getQuickSearchAJAX($basePath) {
 					if (section != "") {
 						url += "/" + section;
 					}
-					document.location = url;
+					if (keywords != "") {
+						document.location = url;
+					}
 					return false;
 				}
 			);

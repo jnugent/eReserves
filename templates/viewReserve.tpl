@@ -97,7 +97,7 @@
 					{% elseif item.requiresEnrolment %}
 						<td>{{ item.getLinkTitle }} (you must be enroled to view this)</td>
 					{% else %}
-						<td>{{ item.getLinkTitle }} (<a href="#" onClick="$('#loginForm').slideToggle(); $('#username').focus();">login</a> to access)</td>
+						<td>{{ item.getLinkTitle }} (login to access)</td>
 					{% endif %}
 					<td align="center"><img src="{{ basePath }}/images/mimeIcons/{{ item.mapTypeToImg }}.png" height="25" /></td>
 					{% if user.canAdministerSection(reservesRecord.getSectionID) %}

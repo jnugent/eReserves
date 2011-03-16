@@ -5,7 +5,9 @@
 			{% if user.isLoggedIn %}
 				<h2>Welcome to Library E-Reserves, {{ user.getFirstName }}</h2>
 			{% else %}
-	
+
+				{{ loginForm.display }}
+
 			<h2>Welcome to Library E-Reserves</h2>
 	
 				<p>Welcome to UNB's electronic reserves system for the Library. You may browse anonymously, 
@@ -33,7 +35,6 @@
 					<!--	<li><a href="{{ basePath }}/index.php/searchWC">Search Worldcat for a Citation</a></li>	-->
 					</ul>
 				{% endif %}
-	
 	
 			{% if user.isLoggedIn %}
 				<small><em>last login: {{ user.getLastLogin }}</em></small>

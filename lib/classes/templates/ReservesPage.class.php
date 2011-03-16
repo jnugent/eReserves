@@ -49,7 +49,7 @@ class ReservesPage {
 		$form = new Form(array('id' => 'login', 'method' => 'post', 'action' => $basePath . '/index.php/login'));
 		$fieldSet = new FieldSet(array('legend' => 'Login'));
 		$fieldSet->addField( new HiddenField( array('name' => 'currentURI', 'value' => ReservesRequest::getRequestURI() ) ) );
-		$fieldSet->addField(new TextField( array('name' => 'username','primaryLabel' => 'Email ID', 'secondaryLabel' => 'Your UNB UserID', 'required' => true,
+		$fieldSet->addField(new TextField( array('name' => 'username','primaryLabel' => 'UNB Email ID', 'secondaryLabel' => '', 'required' => true,
 				'requiredMsg' => 'Please enter a UNB user ID')) );
 		$fieldSet->addField(new Password());
 		$fieldSet->addField(new Button( array('type' => 'submit', 'label' => 'Login')) );
@@ -101,8 +101,8 @@ class ReservesPage {
 
 		import('general.Config');
 		$config = new Config();
-
-		$this->template->loadTemplate('sideBar.tpl', array('user' => $reservesUser, 'basePath' => $config->getSetting('general', 'base_path')));
+		$basePath = $config->getSetting('general', 'base_path');
+		$this->template->loadTemplate('sideBar.tpl', array('loginForm' => $this->_getLoginForm($basePath), 'user' => $reservesUser, 'basePath' => $basePath));
 
 		include_once ("/www/core/inc/footer.php");
 
