@@ -72,6 +72,25 @@ class ReservesRequest {
 		return $doc;
 	}
 
+	static function getRemoteHost() {
+		$host = $_SERVER["REMOTE_ADDR"];
+		return $host;
+	}
+
+	/**
+	 * @brief returns true if the requesting IP is considered 'local' to the reserves instance.  See the config.php file for including IPs.
+	 * @return boolean is it local?
+	 */
+	static function isLocalHost() {
+
+		import('general.Config');
+		$config = new Config();
+		$localIps = $config->getSetting('localhosts', 'localhost');
+		if (in_array(self::getRemoteHost(), $localIps))
+			return true;
+		else
+			return false;
+	}
 	/**
 	 * @brief redirects a user using a Location: header to a specified operation url
 	 * @param String $op the operation to redirect to

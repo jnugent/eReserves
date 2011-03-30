@@ -14,6 +14,13 @@ password = yourPassword
 host = localhost
 dbname = reserves
 
+; we define a small set of IP addresses that we consider 'local' to the machine
+; most of these are SSL virtualhosts that can't be NameVirtualHosted with Apache
+
+[localhosts]
+
+localhost[] = 127.0.0.1
+
 [ldap]
 
 ldap_host = "ldap://ldap.yourserver.com"

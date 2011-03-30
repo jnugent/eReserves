@@ -382,7 +382,7 @@ class ReservesUser {
 	 */
 	public function canPerformOp($op, $objectID) {
 
-		$anonymousOps	 = array('browseCourses', 'login', 'logout', 'loginError', 'opacProxy', 'quickSearch', 'stream', 'viewReserves', 'viewReserve', 'viewAllReserves');
+		$anonymousOps	 = array('browseCourses', 'login', 'logout', 'loginError', 'opacProxy', 'quickSearch', 'searchByUserJSON', 'stream', 'viewReserves', 'viewReserve', 'viewAllReserves');
 		$authenticatedOps = array('viewCourses', 'viewSections');
 
 		if ($op == '' || in_array($op, $anonymousOps) ) {

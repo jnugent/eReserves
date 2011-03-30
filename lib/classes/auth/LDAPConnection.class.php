@@ -98,7 +98,7 @@ class LDAPConnection {
 		import('general.Config');
 		$config = new Config();
 		$uid = '';
-		if (preg_match('/^(\w+)$/', $username, $matches)) {
+		if (preg_match('{^(\w+)$}', $username, $matches)) {
 			$uid = $matches[1];
 		}
 
@@ -109,7 +109,7 @@ class LDAPConnection {
 
 		if ($ldapConnection && $uid != '') {
 			$ldapBind = ldap_bind($ldapConnection, $config->getSetting('ldap', 'administration_dn'), $config->getSetting('ldap', 'administration_pass'));
-			if ($ldapBind && $uid != '') {
+			if ($ldapBind) {
 				$result = ldap_search($ldapConnection, "dc=unb,dc=ca", "(uid=$uid)", array('dn', 'cn', 'mail', 'givenName', 'uid', $studentField, $instructorField, $accountTypeField));
 				if ($result) {
 					$entry = ldap_get_entries($ldapConnection, $result);

@@ -5,6 +5,10 @@ require_once('/www/reserves/lib/adodb5/adodb.inc.php');
 define("CRYPT_SECRET_KEY", "E12diq57q90bVceq");
 define("CRYPT_IV", "f64a3248");
 
+/* these two are necessary because we also use them for talking to Perl CGI on Quest, and the crypt keys don't pack() the same. */
+define("CRYPT_SECRET_KEY_MOBILE", "B1r5CRvIHxzHRf6LDQxPuvk46eEY5CyRgUwfgL8z7JjBsO6NvxY4giAz");
+define("CRYPT_IV_MOBILE", "e4c9551a");
+
 /**
  * @brief mimics a java-like import function which automatically pulls in files ending in .class.php, and converts . to / to imitate packages
  * @param String $class like general.Something -> classes/general/Something.class.php
@@ -229,6 +233,42 @@ function performOp($op, $objectID, &$reservesUser, $extraArgs = array()) {
 			}
 		break;
 
+		case 'searchByUserJSON':
+
+			if (ReservesRequest::isLocalHost()) {
+				$emailid = ReservesRequest::getRequestValue('emailid');
+				if ($emailid != '') {
+				import('auth.LDAPConnection');
+				import('items.Section');
+					$emailid = trim(decryptStringMobile($emailid));
+					$ldapInfo = LDAPConnection::getSectionsFromLDAPRecord($emailid);
+					$sectionCodes = $ldapInfo[0];
+					if (is_array($sectionCodes)) {
+						foreach ($sectionCodes as $code) {
+							$section = Section::getSectionFromCalendarCode($code);
+							if ($section->getTotalNumberOfReserves() > 0) {
+								$items = array();
+								$reserves = $section->getReserves();
+								foreach ($reserves as $reserve) {
+									foreach ($reserve->getPhysicalItems() as $p) {
+										$items[ $p->getTitle() ] = $p->getBarcode();
+									}
+									foreach($reserve->getElectronicItems() as $e) {
+										$items[ $e->getTitle() ] = $e->getURL();
+									}
+								}
+								$sections[ $code ] = array('section' => Section::getSectionFromCalendarCode($code), 'reserveItems' => $items);
+							} else
+								$sections[ $code ] = array();
+						}
+						echo json_encode($sections);
+						exit(0);
+					}
+				}
+			}
+
+		break;
+
 		case 'searchByUser':
 
 			$validSubmission = Form::isValidSubmission();
@@ -247,7 +287,6 @@ function performOp($op, $objectID, &$reservesUser, $extraArgs = array()) {
 						}
 					}
 					return array($sections, $commonName, $emailid);
-
 				} else { // they are searching based on a common name search, like last name
 					$validEntries = LDAPConnection::getUserIDsFromCNSearch(ReservesRequest::getRequestValue('nameterms'));
 					return array('0' => $validEntries);
@@ -389,6 +428,20 @@ function decryptString($string) {
 	$c = mcrypt_cbc (MCRYPT_TripleDES, CRYPT_SECRET_KEY, $string, MCRYPT_DECRYPT, CRYPT_IV);
 
 	return $c;
+}
+
+/*
+ *  @brief decrypts a string that had been encryted with mcrypt(), from the mobile site.
+ *  @param String the string to decrypt
+ *  @return @String the plaintext string
+ */
+function decryptStringMobile($string) {
+
+	$cipher = mcrypt_module_open(MCRYPT_BLOWFISH,'','cbc','');
+	mcrypt_generic_init($cipher, CRYPT_SECRET_KEY_MOBILE, CRYPT_IV_MOBILE);
+	$decrypted = mdecrypt_generic($cipher, base64_decode($string));
+	mcrypt_generic_deinit($cipher);
+	return $decrypted;
 }
 
 /*
