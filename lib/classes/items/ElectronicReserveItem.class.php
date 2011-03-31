@@ -10,7 +10,7 @@ class ElectronicReserveItem extends ReserveItem {
 
 		if ($electronicItemID > 0) {
 			$db = getDB();
-			$sql = "SELECT e.electronicItemID, e.mimeType, e.doi, e.reservesRecordID, e.usageRights, e.url, e.itemTitle, e.originalFileName, e.restrictToLogin, e.restrictToEnroll
+			$sql = "SELECT e.electronicItemID, e.mimeType, e.doi, e.notes, e.reservesRecordID, e.usageRights, e.url, e.itemTitle, e.originalFileName, e.restrictToLogin, e.restrictToEnroll
 					 FROM electronicItem e WHERE e.electronicItemID = ?";
 			$returnStatement = $db->Execute($sql, array($electronicItemID));
 			if ($returnStatement->RecordCount() ==  1) {
@@ -143,6 +143,7 @@ class ElectronicReserveItem extends ReserveItem {
 
 		$itemtitle = ReservesRequest::getRequestValue('itemtitle');
 		$doi = ReservesRequest::getRequestValue('doi');
+		$notes = ReservesRequest::getRequestValue('notes');
 		$electronicitemid = ReservesRequest::getRequestValue('electronicitemid');
 		$reservesrecordid = ReservesRequest::getRequestValue('reservesrecordid');
 		$usagerights = ReservesRequest::getRequestValue('usagerights');
@@ -173,14 +174,14 @@ class ElectronicReserveItem extends ReserveItem {
 
 		$electronicItemIDs = array();
 		foreach ($reservesrecordids as $reservesrecordid) {
-			$sqlParams = array($itemtitle, $doi, $mimetype, $url, $usagerights, $reservesrecordid, $originalfilename, $restricttologin, $restricttoenroll, $electronicitemid);
+			$sqlParams = array($itemtitle, $doi, $mimetype, $url, $usagerights, $reservesrecordid, $originalfilename, $restricttologin, $restricttoenroll, $notes, $electronicitemid);
 			if ($electronicitemid > 0) {
 				$sql = "UPDATE electronicItem SET itemTitle = ?, doi = ?, mimeType = ?, url = ?, usageRights = ?, reservesRecordID = ?, originalFileName = ?, restrictToLogin = ?,
-						restrictToEnroll = ?
+						restrictToEnroll = ?, notes = ?
 						WHERE electronicItemID = ?";
 			} else {
-				$sql = "INSERT INTO electronicItem (itemTitle, doi, mimeType, url, usageRights, reservesRecordID, originalFileName, restrictToLogin, restrictToEnroll, electronicItemID)
-					VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+				$sql = "INSERT INTO electronicItem (itemTitle, doi, mimeType, url, usageRights, reservesRecordID, originalFileName, restrictToLogin, restrictToEnroll, notes, electronicItemID)
+					VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
 			}
 			$returnStatement = $db->Execute($sql, $sqlParams);
 			if ($returnStatement) {
@@ -246,7 +247,8 @@ class ElectronicReserveItem extends ReserveItem {
 							'value' => $this->getAttribute('itemtitle'), 'requiredMsg' => 'Please enter a title') ));
 		$fieldSet->addField(new TextField( array('required' => true, 'primaryLabel' => 'DOI', 'secondaryLabel' => 'A DOI', 'name' => 'doi',
 							'value' => $this->getAttribute('doi')) ));
-
+		$fieldSet->addField(new TextArea( array( 'primaryLabel' => 'Notes', 'secondaryLabel' => 'Notes or Citation', 'name' => 'notes',
+							'value' => $this->getAttribute('notes')) ));
 		/* the form contains both a URL and an Upload field, depending on how the record is created */
 		$fieldSet->addField(new HTMLBlock(array('content' => '<p>Please choose either a URL to a document, or a file on your own computer.</p>')));
 
