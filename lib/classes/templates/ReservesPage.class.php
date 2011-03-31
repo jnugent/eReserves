@@ -148,7 +148,7 @@ class ReservesPage {
 		switch ($op) {
 
 			case 'quickSearch':
-				$templateState['courses'] = $opPerformed['0'];
+				$templateState['sections'] = $opPerformed['0'];
 				$templateState['totalRecords'] = $opPerformed['1'];
 
 				$templateState['pageOffset'] = intval($extraArgs[0]) > 0 ? intval($extraArgs[0]) : 0;
@@ -174,8 +174,9 @@ class ReservesPage {
 
 				$fieldSet->addField(new TextField( array('name' => 'keywords', 'primaryLabel' => 'Search', 'secondaryLabel' => 'Enter some keywords to search for', 'required' => true,
 							'requiredMsg' => 'Please enter some keywords', 'value' => $keywords)));
+
 				import('items.Section');
-				$fieldSet->addField(Section::getSemesterDropdown($templateState['semester']));
+				$fieldSet->addField(Section::getSemesterDropdown(TRUE, $templateState['semester']));
 				$fieldSet->addField(new Button( array('type' => 'submit', 'label' => 'Submit')) );
 
 				$form->addFieldSet($fieldSet);
