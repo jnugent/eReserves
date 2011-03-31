@@ -83,6 +83,15 @@ class PhysicalReserveItem extends ReserveItem {
 	}
 
 	/**
+	 * @brief fetches the citation for this record
+	 * @return String the citation
+	 */
+	function getCitation() {
+		$returner = $this->getAttribute('citation');
+		return $returner;
+	}
+
+	/**
 	 * @brief fetches the loan period for this record
 	 * @return String the loan period (ie, 2 hours)
 	 */
