@@ -111,12 +111,12 @@ class Section extends ElectronicReserveItem {
 
 		$db = getDB();
 		$currentYear = intval(date('Y'));
-		$fiveYearsPrior = $currentYear - 5;
-		$fiveYearsHence = $currentYear + 5;
+		$fiveYearsPrior = $currentYear - 1;
+		$fiveYearsHence = $currentYear + 1;
 		$semesterTerms = array('WI', 'FA', 'IN', 'SP', 'SU');
 
 		$semesters = array();
-		$sql = $db->Prepare('SELECT count(r.itemHeadingID) AS reservesTotal FROM reservesRecord r, itemHeading i, section s WHERE
+		$sql = $db->Prepare('SELECT count(r.reservesRecordID) AS reservesTotal FROM reservesRecord r, itemHeading i, section s WHERE
 							r.itemHeadingID = i.itemHeadingID AND i.sectionID = s.sectionID AND s.year = ? AND s.term = ?');
 
 		for ($year = $fiveYearsHence ; $year >= $fiveYearsPrior ; $year --) {
