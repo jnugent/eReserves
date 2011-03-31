@@ -12,7 +12,7 @@ class ReservesSearch {
 	 * @param $keywords the string to look for
 	 * @return array an array of Course objects that matched, or an empty array if none.
 	 */
-	static function searchCourses(&$keywords, $semester, $offset = 0) {
+	static function searchSections(&$keywords, $semester, $offset = 0) {
 
 		$db = getDB();
 		import('items.Course');
@@ -30,7 +30,7 @@ class ReservesSearch {
 				$year = $matches[1];
 				$term = $matches[2];
 
-				$semesterSQL = ', section s WHERE s.courseID = c.courseID AND s.year = ? AND s.term = ?';
+				$semesterSQL = ', section s, reservesRecord r, itemHeading i WHERE s.courseID = c.courseID AND s.year = ? AND s.term = ? AND s.sectionID = i.sectionID AND i.itemHeadingID =  r.itemHeadingID';
 				$sqlParams = array($year, $term);
 			}
 		}
@@ -39,22 +39,22 @@ class ReservesSearch {
 		$limitClause = " LIMIT $offset, 25";
 
 		/* first query to get the total number of records */
-		$sql = 'SELECT count(c.courseID) AS total FROM course c ' . $whereClause;
+		$sql = 'SELECT count(s.sectionID) AS total FROM course c ' . $whereClause;
 
 		$returnStatement = $db->Execute($sql, $sqlParams);
 		$recordObject = $returnStatement->FetchNextObject();
 		$totalRecords = $recordObject->TOTAL;
 
 		if ($totalRecords > 0) { // there's no point in doing the real query again, if we have zero records that matched the full one
-			$sql = 'SELECT c.courseID FROM course c ' . $whereClause . $limitClause;
+			$sql = 'SELECT s.sectionID FROM course c ' . $whereClause . $limitClause;
 			$returnStatement = $db->Execute($sql, $sqlParams);
 			if ($returnStatement->RecordCount() > 0) {
-				import('items.Course');
-				$matchedCourses = array();
+				import('items.Section');
+				$matchedSections = array();
 				while ($recordObject = $returnStatement->FetchNextObject()) {
-					$matchedCourses[] = new Course($recordObject->COURSEID);
+					$matchedSections[] = new Section($recordObject->SECTIONID);
 				}
-				return array ('0' => $matchedCourses, '1' => $totalRecords);
+				return array ('0' => $matchedSections, '1' => $totalRecords);
 			} else {
 				return array();
 			}
@@ -126,7 +126,7 @@ class ReservesSearch {
 	 */
 	static function buildMySQLWhereClause($fields, $keywords, $semesterSQL, &$db) {
 
-		$match = "MATCH (" . join(',', $fields) . ") AGAINST (" . $db->qstr($keywords) . " IN BOOLEAN MODE)";
+		$match = "MATCH (" . join(',', $fields) . ") AGAINST (" . $db->qstr($keywords) . " IN BOOLEAN MODE) GROUP BY s.sectionID ";
 
 		if ($semesterSQL == '') {
 			$returner =  "WHERE " . $match;

@@ -314,8 +314,8 @@ function performOp($op, $objectID, &$reservesUser, $extraArgs = array()) {
 				$keywords = ReservesRequest::getRequestValue('keywords') != '' ? ReservesRequest::getRequestValue('keywords') : $extraArgs[1];
 				$semesterLimit = ReservesRequest::getRequestValue('semester') != '' ? ReservesRequest::getRequestValue('semester') : $extraArgs[2];
 				$pageOffset = intval($extraArgs[0]) > 0 ? intval($extraArgs[0]) : 0;
-				$reserveCourses = ReservesSearch::searchCourses($keywords, $semesterLimit, $pageOffset);
-				return $reserveCourses;
+				$reservesSections = ReservesSearch::searchSections($keywords, $semesterLimit, $pageOffset);
+				return $reservesSections;
 			}
 		break;
 
