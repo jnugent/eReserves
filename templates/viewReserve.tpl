@@ -104,6 +104,9 @@
 						<td><a href="{{ basePath }}/index.php/editElectronicItem/{{ item.getElectronicItemID }}">Edit</a> | <a onClick="showModal('{{ basePath }}/index.php/deleteElectronicItem/{{ item.getElectronicItemID }}')" href="#">Delete</a></td>
 					{% endif %}
 				</tr>
+				<tr>
+					<td colspan="{%if user.canAdministerSection(reservesRecord.getSectionID) %}4{% else %}3{% endif %}">{{ item.getNotes }}</td>
+				</tr>
 			{% endfor %}
 		</table><br />
 		{% else %}
@@ -126,6 +129,9 @@
 					{% if user.canAdministerSection(reservesRecord.getSectionID) %} 
 						<td><a href="{{ basePath }}/index.php/editPhysicalItem/{{ item.getPhysicalItemID }}">Edit</a> | <a onClick="showModal('{{ basePath }}/index.php/deletePhysicalItem/{{ item.getPhysicalItemID }}')" href="#">Delete</a></td>
 					{% endif %}
+				</tr>
+				<tr>
+					<td colspan="{%if user.canAdministerSection(reservesRecord.getSectionID) %}4{% else %}3{% endif %}">{{ item.getCitation }}</td>
 				</tr>
 				{% endif %}
 			{% endfor %}
