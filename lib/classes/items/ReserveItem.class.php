@@ -39,6 +39,15 @@ class ReserveItem {
 	}
 
 	/**
+	 * @brief returns the notes field for a record (right now, just Electronic ones have this)
+	 * @return String the notes field.
+	 */
+	function getNotes() {
+		$returner = $this->getAttribute('notes');
+		return $returner;
+	}
+
+	/**
 	 * @brief must be overridden in subclasses
 	 */
 	function delete() {
