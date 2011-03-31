@@ -30,19 +30,6 @@
 					<td>{% if instructors != '' %}{{ instructors }}{% endif %}</td>
 				</tr>
 			{% endif %}
-<!--
-			{% for reserve in reserves %}
-				<tr id="{{ reserve.getReservesRecordID }}">
-					{% set physicalItems   = reserve.getPhysicalItems(user, sectionID, TRUE) %}
-					{% set electronicItems = reserve.getElectronicItems(TRUE) %}
-
-					<td>{{ loop.index }}</td>
-					<td><a href="{{ basePath }}/index.php/viewReserve/{{ reserve.getReservesRecordID }}">{{ reserve.getTitle }}</td>
-					<td>{{ physicalItems|length }} physical item{% if physicalItems|length != 1 %}s{% endif %}, and {{ electronicItems|length }} 
-						electronic one{% if electronicItems|length != 1 %}s{% endif %}, filed in {{ reserve.getHeadingTitle }}.</td>
-				</tr>
-			{% endfor %}
--->
 		{% endfor %}
 	</table>
 	{% endif %}
