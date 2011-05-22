@@ -8,12 +8,11 @@
 			<p>Because you are a reserves administrator, you can view and edit all courses.</p>
 		{% endif %}
 
-		{% if courses|length > 0 %}
+		{% if items|length > 0 %}
 
-			{% set start = pageOffset + 1 %}
-			{% set end = start + courses|length - 1 %}
-
-			<p>Now showing {{ start }}-{{ end }} out of {{ totalRecords }} courses.</p>
+			<p>
+				{% include "pagingOffset.tpl" %}
+			</p>
 
 		{% include "courseListTemplate.tpl" %}
 

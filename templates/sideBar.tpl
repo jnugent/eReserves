@@ -5,13 +5,11 @@
 			{% if user.isLoggedIn %}
 				<h2>Welcome to Library E-Reserves, {{ user.getFirstName }}</h2>
 			{% else %}
-
+				<div id="loginError" style="display: none;">
+					<p class="caution">We're sorry, but your login information was incorrect.</p>
+				</div>
+				
 				{{ loginForm.display }}
-
-			<h2>Welcome to Library E-Reserves</h2>
-	
-				<p>Welcome to UNB's electronic reserves system for the Library. You may browse anonymously, 
-				or you may choose to log in to look for things that are specifically associated with your courses.</p>
 	
 			{% endif %}
 	
@@ -28,8 +26,8 @@
 				{% if user.isAdmin and not user.isActing %}
 					<p>Administration Tasks</p>
 					<ul>
-						<li><a href="{{ basePath }}/index.php/browseCourses">Browse Courses</a></li>
-						<li><a href="{{ basePath }}/index.php/createNewCourse">Create New Course</a></li>
+						<li><a href="{{ basePath }}/index.php/browseCourses">Browse Courses by Prefix</a></li>
+					<!--	<li><a href="{{ basePath }}/index.php/createNewCourse">Create New Course</a></li>	-->
 						<li><a href="{{ basePath }}/index.php/viewReserves">Maintain Your Own Reserves</a></li>
 						<li><a href="{{ basePath }}/index.php/searchByUser">Find Courses for a User</a></li>
 					<!--	<li><a href="{{ basePath }}/index.php/searchWC">Search Worldcat for a Citation</a></li>	-->
@@ -40,6 +38,12 @@
 				<small><em>last login: {{ user.getLastLogin }}</em></small>
 			{% endif %}
 			
+			<div id="enrollmentRequired" style="display: none;">
+				<p class="caution"><img src="{{ basePath }}/images/lock.png" height="25" />
+				Some reserve items are restricted to current class members.  Only students currently enrolled in 
+				this class can see those items.
+				</p>
+			</div>
 			{% if user.isActing %}
 				<small> (<sup></sup>Acting Enabled) </small>
 			{% endif %}

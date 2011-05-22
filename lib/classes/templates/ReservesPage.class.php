@@ -4,12 +4,16 @@ class ReservesPage {
 
 	var $title;
 	var $template;
+	var $basePath;
 
 	function __construct($title, $op) {
 		$this->title = $title . $this->_getTitleForPage($op);
 		import('templates.Template');
 		$this->template = new Template();
 
+		import('general.Config');
+		$config = new Config();
+		$this->basePath =& $config->getSetting('general', 'base_path');
 	}
 
 	/**
@@ -19,7 +23,7 @@ class ReservesPage {
 	 */
 	private function _getTitleForPage($op) {
 
-		$titles = array('adminCourseReserves' => 'Admin Course Reserves', 'createNewReserve' => 'Create New Reserve', 'viewReserve' => 'View Reserve');
+		$titles = array('adminCourseReserves' => 'Admin Course Reserves', 'createNewReserve' => 'Create New Reserve', 'viewReserve' => 'View Reserve', 'viewReserves' => 'View Reserves for Section');
 
 		if (array_key_exists($op, $titles)) {
 			return ' - ' . $titles[$op];
@@ -27,6 +31,7 @@ class ReservesPage {
 			return '';
 		}
 	}
+
 	/**
 	 * @brief returns the current page title for the <title> tag of the document
 	 * @return String the title
@@ -38,15 +43,15 @@ class ReservesPage {
 	/**
 	 * @brief generates a bit of HTML to produce the login form on every page.  Broken out of other routines because of a need
 	 * to have it included on the securityException.tpl template which may lack other  context objects.
-	 * @param String $basePath the current base document path.  Normally /reserves
+	 * @param String $this->basePath the current base document path.  Normally /reserves
 	 * @return $form a forms.Form object, which has its display() method called in the template.
 	 */
-	private function _getLoginForm($basePath) {
+	private function _getLoginForm() {
 
 		import('general.ReservesRequest');
 		import('forms.Form');
 
-		$form = new Form(array('id' => 'login', 'method' => 'post', 'action' => $basePath . '/index.php/login'));
+		$form = new Form(array('id' => 'login', 'method' => 'post', 'action' => $this->basePath . '/index.php/login'));
 		$fieldSet = new FieldSet(array('legend' => 'Login'));
 		$fieldSet->addField( new HiddenField( array('name' => 'currentURI', 'value' => ReservesRequest::getRequestURI() ) ) );
 		$fieldSet->addField(new TextField( array('name' => 'username','primaryLabel' => 'UNB Email ID', 'secondaryLabel' => '', 'required' => true,
@@ -62,11 +67,13 @@ class ReservesPage {
 	 * @brief returns a template page header
 	 * @param ReservesUser $reservesUser
 	 */
-	public function getHeader(&$reservesUser) {
+	public function getHeader($reservesUser) {
+
+		$mobileClass = $reservesUser->isMobile() ? ' class="mobile"' : '';
 
 		include_once ("/www/core/inc/func.php");
 		echo '<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
-			<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>  <title>University of New Brunswick Libraries - ';
+			<html ' . $mobileClass . ' xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>  <title>University of New Brunswick Libraries - ';
 
 		echo $this->_getTitle();
 
@@ -77,6 +84,7 @@ class ReservesPage {
 		echo '
 			<link href="https://ajax.googleapis.com/ajax/libs/jqueryui/1.8/themes/base/jquery-ui.css" rel="stylesheet" type="text/css"/>
 			<link rel="stylesheet" type="text/css" media="screen" href="/core/css/validforms.css" />
+			<link rel="stylesheet" type="text/css" media="screen" href="' . $this->basePath . '/css/reserves.css" />
 			<script src="/core/js/jquery.validate.js" type="text/javascript"></script>
 			<script src="/core/js/jquery.tablednd_0_5.js" type="text/javascript"></script>
 		</head>
@@ -93,16 +101,13 @@ class ReservesPage {
 	 * @brief returns a template page footer
 	 * @param ReservesUser $reservesUser
 	 */
-	public function getFooter(&$reservesUser) {
+	public function getFooter($reservesUser) {
 
 		echo '	</div><!-- end innertube -->
 				</div><!-- end contentcolumn -->
 				</div><!-- end contentwrapper --> ';
 
-		import('general.Config');
-		$config = new Config();
-		$basePath = $config->getSetting('general', 'base_path');
-		$this->template->loadTemplate('sideBar.tpl', array('loginForm' => $this->_getLoginForm($basePath), 'user' => $reservesUser, 'basePath' => $basePath));
+		$this->template->loadTemplate('sideBar.tpl', array('loginForm' => $this->_getLoginForm(), 'user' => $reservesUser, 'basePath' => $this->basePath));
 
 		include_once ("/www/core/inc/footer.php");
 
@@ -117,9 +122,20 @@ class ReservesPage {
 				// -->
 			</script>';
 
+		if ($_SESSION['loginError'] == true) {
+			echo '
+				<script type="text/javascript">
+					<!--
+						$(document).ready(function() {
+							$("#loginError").show();
+						});
+					// -->
+				</script>';
+		}
 		echo '</body></html>';
 
 	}
+
 	/**
 	 * @brief builds a page for the Templating sytem, based on the current operation, user, and oject.  Accepts
 	 * an extra $opPerformed object that can contain information relevant to the page
@@ -135,26 +151,28 @@ class ReservesPage {
 		import('forms.Form');
 
 		$config = new Config();
-		$basePath = $config->getSetting('general', 'base_path');
-		$templateState = array('page' => $this, 'basePath' => $basePath, 'user' => $reservesUser, 'opPerformed' => $opPerformed);
+
+		$templateState = array('page' => $this, 'basePath' => $this->basePath, 'user' => $reservesUser, 'opPerformed' => $opPerformed);
 		$referringDoc = ReservesRequest::getReferringPage() != '' ? ReservesRequest::getReferringPage() : 'javascript:history.go(-1)';
-		$breadCrumb = '<a href="' . $basePath . '/index.php">Home</a> | <a href="' . $referringDoc . '">Previous Page</a> ';
+		$breadCrumb = '<a href="' . $this->basePath . '/index.php">Home</a> | <a href="' . $referringDoc . '">Previous Page</a> ';
 
 		if ($reservesUser->isAnonymous()) {
-			$templateState['loginForm'] = $this->_getLoginForm($basePath);
+			$templateState['loginForm'] = $this->_getLoginForm();
 			unset($form, $fieldSet);
 		}
 
 		switch ($op) {
 
 			case 'quickSearch':
-				$templateState['sections'] = $opPerformed['0'];
+				$templateState['items'] = $opPerformed['0'];
 				$templateState['totalRecords'] = $opPerformed['1'];
+				$templateState['recordType'] = $opPerformed['2'];
 
 				$templateState['pageOffset'] = intval($extraArgs[0]) > 0 ? intval($extraArgs[0]) : 0;
 
 				$templateState['keywords'] = $extraArgs[1] != '' ? $extraArgs[1] : ReservesRequest::getRequestValue('keywords');
 				$templateState['semester'] = $extraArgs[2] != '' ? $extraArgs[2] : ReservesRequest::getRequestValue('semester');
+				$templateState['instructor'] = $extraArgs[3] != '' ? $extraArgs[3] : ReservesRequest::getRequestValue('instructor');
 
 				// NOTE this case falls through to get the search form that is present on the default index page.
 
@@ -164,17 +182,19 @@ class ReservesPage {
 					$breadCrumb = '';
 				}
 
-				$templateState['extraJS'] = getQuickSearchAJAX($basePath);
+				$templateState['extraJS'] = getQuickSearchAJAX($this->basePath);
 				$formsArray = array();
 
-				$form = new Form(array('id' => 'searchReserves', 'method' => 'post', 'action' => $basePath . '/index.php/quickSearch'));
+				$form = new Form(array('id' => 'searchReserves', 'method' => 'post', 'action' => $this->basePath . '/index.php/quickSearch'));
 				$fieldSet = new FieldSet(array('legend' => 'Reserves Quick Search'));
 
 				$keywords = ReservesRequest::getRequestValue('keywords') != '' ? htmlspecialchars(ReservesRequest::getRequestValue('keywords')) : $extraArgs[1];
+				$instructor = ReservesRequest::getRequestValue('instructor') != '' ? htmlspecialchars(ReservesRequest::getRequestValue('instructor')) : $extraArgs[3];
 
 				$fieldSet->addField(new TextField( array('name' => 'keywords', 'primaryLabel' => 'Search', 'secondaryLabel' => 'Enter some keywords to search for', 'required' => true,
 							'requiredMsg' => 'Please enter some keywords', 'value' => $keywords)));
-
+				$fieldSet->addField(new TextField( array('name' => 'instructor', 'primaryLabel' => 'Instructor', 'secondaryLabel' => 'Optionally, add your instructor\'s name',
+							 'value' => $instructor)));
 				import('items.Section');
 				$fieldSet->addField(Section::getSemesterDropdown(TRUE, $templateState['semester']));
 				$fieldSet->addField(new Button( array('type' => 'submit', 'label' => 'Submit')) );
@@ -193,7 +213,7 @@ class ReservesPage {
 				$templateState['sectionID'] = $objectID;
 
 				$formsArray = array();
-				$form = new Form(array('id' => 'assignPeople', 'method' => 'post', 'action' => $basePath . '/index.php/assignPeople/' . $section->getSectionID()));
+				$form = new Form(array('id' => 'assignPeople', 'method' => 'post', 'action' => $this->basePath . '/index.php/assignPeople/' . $section->getSectionID()));
 				$fieldSet = new FieldSet(array('legend' => 'Assign People to this Section'));
 				$fieldSet->addField(new TextField( array('name' => 'instructor', 'primaryLabel' => 'Person', 'secondaryLabel' => 'The user ID (not name) of the person to add',
 							'required' => true, 'requiredMsg' => 'You must enter a User ID', 'value' => '') ));
@@ -213,11 +233,11 @@ class ReservesPage {
 			case 'editCourse':
 			case 'createNewCourse':
 
-				$breadCrumb .= ' | <a href="' . $basePath . '/index.php/viewCourses">View Your Courses</a>';
+				$breadCrumb .= ' | <a href="' . $this->basePath . '/index.php/viewCourses">View Your Courses</a>';
 				$formsArray = array();
 				import('items.Course');
 				$course = new Course($objectID);
-				$editForm = $course->assembleEditForm($basePath);
+				$editForm = $course->assembleEditForm($this->basePath);
 				$formsArray[] = $editForm;
 
 				$templateState['forms'] = $formsArray;
@@ -230,7 +250,7 @@ class ReservesPage {
 				$formsArray = array();
 				import('items.Section');
 				$section = new Section($objectID);
-				$editForm = $section->assembleEditForm($basePath);
+				$editForm = $section->assembleEditForm($this->basePath);
 				$formsArray[] = $editForm;
 
 				$templateState['forms'] = $formsArray;
@@ -247,10 +267,10 @@ class ReservesPage {
 				$itemHeadings = $section->getHeadings();
 				$templateState['itemHeadings'] = $itemHeadings;
 				$templateState['section'] = $section;
-				$breadCrumb .= ' | <a href="' . $basePath . '/index.php/viewReserves/' . $objectID . '">View This Section\'s Reserves</a>';
+				$breadCrumb .= ' | <a href="' . $this->basePath . '/index.php/viewReserves/' . $objectID . '">View This Section\'s Reserves</a>';
 
 				$itemHeading->setSectionID($section->getSectionID());
-				$formsArray[] = $itemHeading->assembleEditForm($basePath);
+				$formsArray[] = $itemHeading->assembleEditForm($this->basePath);
 				$templateState['forms'] = $formsArray;
 				break;
 
@@ -288,12 +308,11 @@ class ReservesPage {
 
 					}
 				}
-				$editForm = $reservesRecord->assembleEditForm($basePath);
+				$editForm = $reservesRecord->assembleEditForm($this->basePath);
 				$formsArray[] = $editForm;
 
 				$templateState['forms'] = $formsArray;
 				break;
-
 
 			case 'adminCourseReserves':
 				$formsArray = array();
@@ -302,18 +321,38 @@ class ReservesPage {
 				import('items.Section');
 				import('items.ReservesRecord');
 
-				$itemHeading = new ItemHeading($objectID);
+				// we test here to see if $objectID is 0.  If it was, there was no item heading chosen.  So we create one
+				// based on the default from the config file, just like if it was a bulk add.
+				// NOTE: JUST in this case, the $extraArgs[0] parameter will be the sectionID.
+
+				$itemHeadingID = 0;
+				$reservesRecordID = 0;
+
+				if ($objectID == 0) {
+					$itemHeadingID = ItemHeading::create(intval($extraArgs[0]), $config->getSetting('bulk_reserves', 'default_heading_title'));
+				} else {
+					$itemHeadingID = $objectID;
+					$reservesRecordID = intval($extraArgs[0]);
+				}
+
+				$itemHeading = new ItemHeading($itemHeadingID);
+
 				$section = new Section($itemHeading->getSectionID());
 
-				$reserves = $section->getReserves();
+				//$reserves = $section->getReserves();
+				$reserves = $itemHeading->getListedReserves();
+
 				$templateState['itemHeading'] = $itemHeading;
 				$templateState['reserves'] = $reserves;
-				$reservesRecord = new ReservesRecord(intval($extraArgs[0]));
+				$reservesRecord = new ReservesRecord($reservesRecordID);
 				$templateState['section'] = $section;
+				$reservesRecord->setItemHeadingID($itemHeadingID);
 				$reservesRecord->setPossibleItemHeadings($section->getHeadings());
-				$editForm = $reservesRecord->assembleEditForm($basePath);
+				$editForm = $reservesRecord->assembleEditForm($this->basePath);
 				$templateState['reservesRecord'] = $reservesRecord;
 				$templateState['reservesForm'] = $editForm;
+
+				$breadCrumb .= ' | <a href="' . $this->basePath . '/index.php/itemHeadings/' . $section->getSectionID() . '/0">View other section headings</a>';
 				break;
 
 			case 'editElectronicItem':
@@ -321,11 +360,11 @@ class ReservesPage {
 				$formsArray = array();
 				import('items.ElectronicReserveItem');
 				$item = new ElectronicReserveItem($objectID);
-				$editForm = $item->assembleEditForm($basePath);
+				$editForm = $item->assembleEditForm($this->basePath);
 				$formsArray[] = $editForm;
 
 				$templateState['forms'] = $formsArray;
-				$breadCrumb .= ' | <a href="' . $basePath . '/index.php/viewReserve/' . $item->getReservesRecordID() . '">View Reserves Record</a>';
+				$breadCrumb .= ' | <a href="' . $this->basePath . '/index.php/viewReserve/' . $item->getReservesRecordID() . '">View Reserves Record</a>';
 
 				break;
 
@@ -334,11 +373,11 @@ class ReservesPage {
 				$formsArray = array();
 				import('items.PhysicalReserveItem');
 				$item = new PhysicalReserveItem($objectID);
-				$editForm = $item->assembleEditForm($basePath);
+				$editForm = $item->assembleEditForm($this->basePath);
 				$formsArray[] = $editForm;
 
 				$templateState['forms'] = $formsArray;
-				$breadCrumb .= ' | <a href="' . $basePath . '/index.php/viewReserve/' . $item->getReservesRecordID() . '">View Reserves Record</a>';
+				$breadCrumb .= ' | <a href="' . $this->basePath . '/index.php/viewReserve/' . $item->getReservesRecordID() . '">View Reserves Record</a>';
 
 				break;
 
@@ -349,17 +388,20 @@ class ReservesPage {
 				$itemHeadings = $section->getHeadings();
 				$templateState['section'] = $section;
 				$templateState['itemHeadings'] = $itemHeadings;
-
+				$templateState['defaultHeadingTitle'] = $config->getSetting('bulk_reserves', 'default_heading_title');
 				if ($reservesUser->isLoggedIn()) {
-					$breadCrumb .= ' | <a href="' . $basePath . '/index.php/viewCourses">View Your Courses</a>';
+					$breadCrumb .= ' | <a href="' . $this->basePath . '/index.php/viewCourses">View Your Courses</a>';
 				}
 				break;
 
 			case 'viewCourses':
 
-				$templateState['courses'] = $opPerformed['0'];
+				$templateState['items'] = $opPerformed['0'];
 				$templateState['totalRecords'] = $opPerformed['1'];
 				$templateState['pageOffset'] = intval($extraArgs[0]) > 0 ? intval($extraArgs[0]) : 0;
+				if (isset($extraArgs[1])) {
+					list($templateState['courseNameFilter'], $templateState['courseCodeFilter']) = preg_split("/\|/", $extraArgs[1]);
+				}
 				break;
 
 			case 'viewSections':
@@ -373,7 +415,7 @@ class ReservesPage {
 					$templateState['defaultHeadingTitle'] = $config->getSetting('bulk_reserves', 'default_heading_title');
 				}
 				if ($reservesUser->isLoggedIn()) {
-					$breadCrumb .= ' | <a href="' . $basePath . '/index.php/viewCourses">View Your Courses</a>';
+					$breadCrumb .= ' | <a href="' . $this->basePath . '/index.php/viewCourses">View Your Courses</a>';
 				}
 				break;
 
@@ -382,13 +424,13 @@ class ReservesPage {
 				import('items.ReservesRecord');
 				$reservesRecord = new ReservesRecord($objectID);
 				$templateState['reservesRecord'] = $reservesRecord;
-				$breadCrumb .= ' | <a href="' . $basePath . '/index.php/viewReserves/' . $reservesRecord->getSectionID()  . '">View This Section\'s Other Reserves </a>';
+				$breadCrumb .= ' | <a href="' . $this->basePath . '/index.php/viewReserves/' . $reservesRecord->getSectionID()  . '">View This Section\'s Other Reserves </a>';
 				break;
 
 			case 'searchByUser':
 
 				$formsArray = array();
-				$form = new Form(array('id' => 'searchByName', 'method' => 'post', 'action' => $basePath . '/index.php/searchByUser'));
+				$form = new Form(array('id' => 'searchByName', 'method' => 'post', 'action' => $this->basePath . '/index.php/searchByUser'));
 				$fieldSet = new FieldSet(array('legend' => 'Find Courses for a User Name'));
 				$fieldSet->addField(new TextField( array('name' => 'nameterms','primaryLabel' => 'Some Name Terms', 'secondaryLabel' => '', 'required' => true,
 							'value' => ReservesRequest::getRequestValue('nameterms'),  'minlength' => 3, 'requiredMsg' => 'Please enter at least 3 letters')) );
@@ -397,7 +439,7 @@ class ReservesPage {
 				$formsArray[] = $form;
 
 				unset ($fieldSet, $form);
-				$form = new Form(array('id' => 'searchByID', 'method' => 'post', 'action' => $basePath . '/index.php/searchByUser'));
+				$form = new Form(array('id' => 'searchByID', 'method' => 'post', 'action' => $this->basePath . '/index.php/searchByUser'));
 				$fieldSet = new FieldSet(array('legend' => 'Find Courses for a User ID'));
 				$fieldSet->addField(new TextField( array('name' => 'emailid','primaryLabel' => 'UNB Email ID', 'secondaryLabel' => 'A UNB email ID', 'required' => true,
 							'value' => ReservesRequest::getRequestValue('emailid'),  'requiredMsg' => 'Please enter an email ID')) );
@@ -439,14 +481,18 @@ class ReservesPage {
 
 				import('items.ElectronicReserveItem');
 				import('items.PhysicalReserveItem');
+				import('items.ReservesRecord');
 
+				$reservesRecord = new ReservesRecord(intval($objectID));
 				$electronicReserveItem = new ElectronicReserveItem(intval($extraArgs[0]) > 0 ? intval($extraArgs[0]) : 0);
 				$electronicReserveItem->setAttribute('reservesrecordid', $objectID);
-				$templateState['electronicReserveForm'] = $electronicReserveItem->assembleEditForm($basePath);
+				$electronicReserveItem->setAttribute('itemtitle', $reservesRecord->getTitle());
+				$templateState['electronicReserveForm'] = $electronicReserveItem->assembleEditForm($this->basePath);
 
 				$physicalReserveItem = new PhysicalReserveItem(intval($extraArgs[0]) > 0 ? intval($extraArgs[0]) : 0);
 				$physicalReserveItem->setAttribute('reservesrecordid', $objectID);
-				$templateState['physicalReserveForm'] = $physicalReserveItem->assembleEditForm($basePath);
+				$templateState['physicalReserveForm'] = $physicalReserveItem->assembleEditForm($this->basePath);
+				$breadCrumb .= ' | <a href="' . $this->basePath . '/index.php/viewReserves/' . $reservesRecord->getSectionID() . '">Return to the Course Section</a>';
 
 			break;
 
@@ -454,7 +500,7 @@ class ReservesPage {
 
 				$formsArray = array();
 				import('search.WorldcatSearch');
-				$formsArray[] = WorldcatSearch::buildWCSearchForm($basePath);
+				$formsArray[] = WorldcatSearch::buildWCSearchForm($this->basePath);
 				$templateState['forms'] = $formsArray;
 
 			break;
@@ -477,10 +523,10 @@ class ReservesPage {
 	 * @brief directs to a security error page
 	 * @return void
 	 */
-	public function showSecurityException(&$reservesUser) {
+	public function showSecurityException($reservesUser) {
 		import('general.Config');
 		$config = new Config();
-		$templateState = array('loginForm' => $this->_getLoginForm($config->getSetting('general', 'base_path')), 'breadCrumb' => '<a href="/reserves/index.php">Home</a>', 'page' => $this, 'user' => $reservesUser, 'basePath' => $config->getSetting('general', 'base_path'));
+		$templateState = array('loginForm' => $this->_getLoginForm(), 'breadCrumb' => '<a href="/reserves/index.php">Home</a>', 'page' => $this, 'user' => $reservesUser, 'basePath' => $this->base_path);
 		$this->template->loadTemplate('securityException.tpl', $templateState);
 	}
 }

@@ -15,8 +15,8 @@
 
 		/**
 		 * @brief this method sets the result format to either DC, or to MARC.
-		 * @param String $format
-		 * @return void
+		 * @param String $format.
+		 * @return void.
 		 */
 		public function setResultFormat($format) {
 
@@ -34,8 +34,8 @@
 
 		/**
 		 * @brief performs a search using the WC API.  Accepts an array of terms for the search, with author and title for now.
-		 * @param Array $terms the author/title/etc... terms to search for
-		 * @return the result set, as an array of XML fragments
+		 * @param Array $terms the author/title/etc... terms to search for.
+		 * @return the result set, as an array of XML fragments.
 		 */
 		public function doSearch($terms = array()) {
 
@@ -67,9 +67,9 @@
 		}
 
 		/**
-		 * @brief assembles the search form on the template page
+		 * @brief assembles the search form on the template page.
 		 * @param String $basePath from the config.php file.  The base path for for the reserves system.
-		 * @return Form a Form object for this form
+		 * @return Form a Form object for this form.
 		 */
 		static public function buildWCSearchForm($basePath) {
 

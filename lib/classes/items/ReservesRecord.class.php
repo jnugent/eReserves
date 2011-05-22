@@ -37,14 +37,16 @@ class ReservesRecord extends ReserveItem {
 	}
 
 	/**
-	 * @brief private accessor method for setting the Physical Items assigned to this reserve
+	 * @brief private accessor method for setting the Physical Items assigned to this reserve.
+	 * @param $items an array of PhysicalReserveItems.
 	 */
 	private function _setPhysicalItems($items) {
 		$this->_physicalItems = $items;
 	}
 
 	/**
-	 * @brief private accessor method for setting the Electronic Items assigned to this reserve
+	 * @brief private accessor method for setting the Electronic Items assigned to this reserve.
+	 * @param $items an array of ElectronicReserveItems.
 	 */
 	private function _setElectronicItems($items) {
 		$this->_electronicItems = $items;
@@ -53,9 +55,9 @@ class ReservesRecord extends ReserveItem {
 	/**
 	 * @brief updates the database field for the ItemHeading assigned to this ReservesRecord.  Will create a new entry if one does not
 	 * yet exist.
-	 * @param ADODBOject $db
-	 * @param int $itemHeadingID the id of theItemHeading to be assigned
-	 * @param int $reservesRecordID the primary key of this ReservesRecord
+	 * @param ADODBOject $db our database connection.
+	 * @param int $itemHeadingID the id of theItemHeading to be assigned.
+	 * @param int $reservesRecordID the primary key of this ReservesRecord.
 	 */
 	private function _updateItemHeadingForReserve(&$db, $itemHeadingID, $reservesRecordID) {
 
@@ -64,8 +66,8 @@ class ReservesRecord extends ReserveItem {
 	}
 
 	/**
-	 * @brief used to temporarily place the record IDs of bulk records in _SESSION so they can be referenced on other pages
-	 * @param Array $ids the ReserveRecord ids
+	 * @brief used to temporarily place the record IDs of bulk records in _SESSION so they can be referenced on other pages.
+	 * @param Array $ids the ReserveRecord record IDs.
 	 */
 	private function _storeBulkRecordIDs($ids) {
 		$_SESSION['bulkRecordIDs'] = $ids;
@@ -79,10 +81,11 @@ class ReservesRecord extends ReserveItem {
 
 		import('forms.Radio');
 
-		$radio = new Radio( array('name' => 'usagerights', 'value' => $usageRights, 'required' => true, 'primaryLabel' => '<a target="_blank" href="http://lib.unb.ca/copyright/">Copyright Statement</a>', 'secondaryLabel' => 'Please choose one', 'requiredMsg' => 'Please choose a statement') );
+		$radio = new Radio( array('name' => 'usagerights', 'value' => $usageRights, 'validationDep' => 'function(element) {if ($("#fileChoice:checked").val() == "filechoicelocal") return true; return false; }', 'primaryLabel' => '<a target="_blank" href="http://lib.unb.ca/copyright/">Copyright Statement</a>', 'secondaryLabel' => 'Please choose one', 'requiredMsg' => 'Please choose a statement') );
 		$radio->addButton( array('id' => 'creator', 'value'=> 'creator', 'caption' => 'I am the creator of this material') );
 		$radio->addButton( array('id' => 'no_infringe', 'value' => 'no_infringe', 'caption' => 'To the best of my knowledge these materials do not infringe on copyright') );
 		$radio->addButton( array('id' => 'cleared', 'value' => 'cleared', 'caption' => 'The materials copied here have been cleared of copyright from the rights holder') );
+		$radio->addButton( array('id' => 'pending', 'value' => 'cleared', 'caption' => 'The materials copied are pending copyright clearance from the rights holder') );
 		$radio->addButton( array('id' => 'not_within', 'value' => 'not_within', 'caption' => 'To the best of my knowledge these materials are NOT within the limits of copyright') );
 
 		return $radio;
@@ -90,16 +93,16 @@ class ReservesRecord extends ReserveItem {
 
 	/**
 	 * @brief returns a list of ReserveItems //FIXME
-	 * @param $reservesUser the user currently requesting this list
-	 * @param $sectionID the section ID of the Section we are interested in.  Required to determine whether or not
+	 * @param $reservesUser the user currently requesting this list.
+	 * @param $sectionID the section ID of the Section we are interested in.  Required to determine whether or not.
 	 * the viewing person has admin abilities, in order to return shadowed records or not.
-	 * @return Array the physical items
+	 * @return Array the PhysicalReserveItems items.
 	 */
-	public function getPhysicalItems(&$reservesUser = null, $onlyIDs = FALSE) {
+	public function getPhysicalItems($reservesUser = null, $onlyIDs = FALSE) {
 
 		$db = getDB();
 
-		if ($reservesUser->isAdmin() || $reservesUser->canAdministerSection($this->getSectionID())) {
+		if ($reservesUser && ($reservesUser->isAdmin() || $reservesUser->canAdministerSection($this->getSectionID()))) {
 			$sql = 'SELECT physicalItemID FROM physicalItem WHERE reservesRecordID = ?';
 		} else {
 			$sql = 'SELECT physicalItemID FROM physicalItem WHERE reservesRecordID = ? AND shadow = "0"';
@@ -121,8 +124,8 @@ class ReservesRecord extends ReserveItem {
 	}
 
 	/**
-	 * @brief returns an array of PhysicalReserveItem objects that have been assigned to this ReservesRecord
-	 * @return Array the items in question
+	 * @brief returns an array of PhysicalReserveItem objects that have been assigned to this ReservesRecord.
+	 * @return Array the PhysicalReserveItems in question.
 	 */
 	public function getAllPhysicalItems() {
 
@@ -142,7 +145,7 @@ class ReservesRecord extends ReserveItem {
 
 	/**
 	 * @brief returns a list of ElectronicItems asigned to this ReservesRecord //FIXME
-	 * @return Array the list of electronic items
+	 * @return Array the collection of ElectronicReserveItems items.
 	 */
 	public function getElectronicItems($onlyIDs = FALSE) {
 		$db = getDB();
@@ -162,7 +165,12 @@ class ReservesRecord extends ReserveItem {
 		return $electronicItems;
 	}
 
-	function getTotalNumberOfItems(&$reservesUser) {
+	/**
+	 * @brief returns the total number of Items assigned to this ReservesRecord.  We pass in the User since we hide shadowed records from non-admins.
+	 * @param ReservesUser $reservesUser the user using the site.
+	 * @return int the total items (that the user can see).
+	 */
+	function getTotalNumberOfItems($reservesUser) {
 
 		$physicalCount = sizeof($this->getPhysicalItems($reservesUser, TRUE));
 		$electronicCount = sizeof($this->getElectronicItems(TRUE));
@@ -171,7 +179,13 @@ class ReservesRecord extends ReserveItem {
 		return $total;
 	}
 
-	function getSingleItem(&$reservesUser, $basePath) {
+	/**
+	 * @brief convenience method for building a Array of the properties for the 'only' reserves item, if a record just has one.
+	 * @param ReservesUser $reservesUser the current user (since we may deny access to users who are not enrolled in sections).
+	 * @param String $basePath the path to our reserves instance, normally /reserves.
+	 * @return Array the item properties, passed into our template.
+	 */
+	function getSingleItem($reservesUser, $basePath) {
 
 		$physicalItems = $this->getPhysicalItems($reservesUser, TRUE);
 		$electronicItems = $this->getElectronicItems(TRUE);
@@ -180,7 +194,7 @@ class ReservesRecord extends ReserveItem {
 		if (sizeof($physicalItems) == 1) {
 			import('items.PhysicalReserveItem');
 			$item = new PhysicalReserveItem($physicalItems[0]);
-			return array('loginRequired' => false, 'type' => 'p', 'id' => $item->getPhysicalItemID(), 'class' => 'opacLink', 'title' => $this->getTitle(), 'display' => $item->getLocation(), 'info' => 'click for record info', 'url' => $item->getURL());
+			return array('loginRequired' => false, 'type' => 'p', 'id' => $item->getPhysicalItemID(), 'class' => 'opacLink', 'title' => $this->getTitle(), 'display' => '', 'info' => 'click for record info', 'url' => $item->getURL());
 		} else {
 			import('items.ElectronicReserveItem');
 			$item = new ElectronicReserveItem($electronicItems[0]);
@@ -189,23 +203,23 @@ class ReservesRecord extends ReserveItem {
 			if (!$item->isRestricted() || $reservesUser->isAdmin() || ( $reservesUser->isLoggedIn() && !$item->requiresEnrolment()) ||
 				$this->getSection()->userIsEnrolled($reservesUser->getUserName()) ) { $loginRequired = false; }
 
-			return array('loginRequired' => $loginRequired, 'type' => 'e', 'id' => $item->getElectronicItemID(), 'title' => $this->getTitle(), 'display' => 'Available Online', 'info' => '<img height="25" src="' . $basePath . '/images/mimeIcons/' . $item->mapTypeToImg() . '.png" />', 'url' => $item->getURL());
+			return array('loginRequired' => $loginRequired, 'type' => 'e', 'id' => $item->getElectronicItemID(), 'title' => $this->getTitle(), 'display' => 'Available Online', 'info' => '<img height="25" src="' . $basePath . '/images/mimeIcons/' . $item->mapTypeToImg() . '.png" />', 'url' => $item->getURL(), 'notes' => $item->getNotes());
 		}
 	}
 
 	/**
 	 * @brief used to set the ItemHeadings assigned to the course that the user is trying to
 	 * add this ReservesRecord to.
-	 * @param array $itemHeadings an array of ItemHeadings to add
+	 * @param Array $itemHeadings an array of ItemHeadings to add.
 	 */
-	public function setPossibleItemHeadings(&$itemHeadings) {
+	public function setPossibleItemHeadings($itemHeadings) {
 		$this->_itemHeadings = $itemHeadings;
 	}
 
 	/**
 	 * @brief pulled by the assembleEditForm() function when creating a dropdown list of
-	 * possible ItemHeadings to use for this ReservesRecord
-	 * @return array an array of ItemHeadings
+	 * possible ItemHeadings to use for this ReservesRecord.
+	 * @return Array an array of ItemHeading objects.
 	 */
 	public function getPossibleItemHeadings() {
 		$returner = $this->_itemHeadings;
@@ -213,24 +227,24 @@ class ReservesRecord extends ReserveItem {
 	}
 
 	/**
-	 * @brief convenience method to store the Section ID for the section that this reserve belongs to
-	 * @param int $sectionID
+	 * @brief convenience method to store the Section ID for the section(s) that this reserve belongs to.
+	 * @param Array $sectionIDs the IDs that this reserve should be in.
 	 */
 	public function setSectionIDs($sectionIDs = array()) {
 		$this->setAttribute('sectionids', $sectionIDs);
 	}
 
 	/**
-	 * @brief convenience method to store the ItemHeading ID for the heading that this reserve belongs to
-	 * @param int $itemHeadingID
+	 * @brief convenience method to store the ItemHeading ID for the heading that this reserve belongs to.
+	 * @param int $itemHeadingID.
 	 */
 	public function setItemHeadingID($itemHeadingID) {
 		$this->setAttribute('itemheadingid', $itemHeadingID);
 	}
 
 	/**
-	 * @brief returns the Section ID of the section for this ReservesRecord
-	 * @return int the sectionID
+	 * @brief returns the Section ID of the section for this ReservesRecord.
+	 * @return int the sectionID.
 	 */
 	public function getSectionID() {
 		$returner = $this->getAttribute('sectionid');
@@ -238,8 +252,8 @@ class ReservesRecord extends ReserveItem {
 	}
 
 	/**
-	 * @brief returns the ItemHeading ID of the heading for this ReservesRecord
-	 * @return int the itemHeadingID
+	 * @brief returns the ItemHeading ID of the heading for this ReservesRecord.
+	 * @return int the itemHeadingID.
 	 */
 	public function getItemHeadingID() {
 		$returner = $this->getAttribute('itemheadingid');
@@ -247,8 +261,8 @@ class ReservesRecord extends ReserveItem {
 	}
 
 	/**
-	 * @brief convenience method for getting the section for this ReservesRecord
-	 * @return Section the section
+	 * @brief convenience method for getting the section for this ReservesRecord.
+	 * @return Section the section for this ReservesRecord.
 	 */
 	public function getSection() {
 		import('items.Section');
@@ -257,8 +271,8 @@ class ReservesRecord extends ReserveItem {
 	}
 
 	/**
-	 * @brief convenience method for getting the title for this ReservesRecord
-	 * @return String the title
+	 * @brief convenience method for getting the title for this ReservesRecord.
+	 * @return String the record title.
 	 */
 	public function getTitle() {
 		$returner = $this->getAttribute('reservesrecordtitle');
@@ -266,8 +280,8 @@ class ReservesRecord extends ReserveItem {
 	}
 
 	/**
-	 * @brief convenience method for getting the heading title for this ReservesRecord
-	 * @return String the title
+	 * @brief convenience method for getting the heading title for this ReservesRecord.
+	 * @return String the heading title.
 	 */
 	public function getHeadingTitle() {
 		$returner = $this->getAttribute('headingtitle');
@@ -275,8 +289,8 @@ class ReservesRecord extends ReserveItem {
 	}
 
 	/**
-	 * @brief convenience method for getting the linkID for this ReservesRecord
-	 * @return int the ID, if this record is linked to other ones
+	 * @brief convenience method for getting the linkID for this ReservesRecord.
+	 * @return int the ID, if this record is linked to other ones.
 	 */
 	public function getLinkID() {
 		$returner = $this->getAttribute('linkid');
@@ -284,8 +298,8 @@ class ReservesRecord extends ReserveItem {
 	}
 
 	/**
-	 * @brief is it linked? return boolean
-	 * @return boolean
+	 * @brief is it linked? return true or false.
+	 * @return boolean.
 	 */
 	public function isLinked() {
 		if ($this->getLinkedID() > 0) {
@@ -296,8 +310,8 @@ class ReservesRecord extends ReserveItem {
 	}
 
 	/**
-	 * @brief convenience method for getting the details assigned to this ReservesRecord
-	 * @return String the details
+	 * @brief convenience method for getting the details assigned to this ReservesRecord.
+	 * @return String the details.
 	 */
 	public function getDetails() {
 		$returner = $this->getAttribute('details');
@@ -350,6 +364,7 @@ class ReservesRecord extends ReserveItem {
 			}
 			if ($linkid == 0) {
 				$linkid = $db->Insert_ID();
+				$this->setAttribute('reservesrecordid', $linkid);
 			}
 		}
 
@@ -376,8 +391,8 @@ class ReservesRecord extends ReserveItem {
 	}
 
 	/**
-	 * @brief deletes a ReservesRecord and all items in it
-	 * @return boolean true or false, if it succeeded
+	 * @brief deletes a ReservesRecord and all items in it.
+	 * @return boolean true or false, if it succeeded.
 	 */
 	public function delete() {
 
@@ -401,9 +416,9 @@ class ReservesRecord extends ReserveItem {
 
 	/**
 	 * @brief function which assembles a Form object representing this Reserves Record, so it can be edited by a course admin.
-	 * @return Form the form object
+	 * @return Form the form object.
 	 */
-	function assembleEditForm(&$basePath) {
+	function assembleEditForm($basePath) {
 
 		import('general.Config');
 		$config = new Config();

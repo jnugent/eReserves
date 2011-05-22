@@ -9,52 +9,73 @@ class ReservesSearch {
 	/**
 	 * @brief a prototype function for generating a list of Courses based on a keyword search in the title.
 	 * // FIXME make this search more useful.
-	 * @param $keywords the string to look for
+	 * @param $keywords the string to look for.
 	 * @return array an array of Course objects that matched, or an empty array if none.
 	 */
-	static function searchSections(&$keywords, $semester, $offset = 0) {
+	static function searchSections($reservesUser, $keywords, $semester, $instructor, $offset = 0) {
 
 		$db = getDB();
 		import('items.Course');
+		import('items.Section');
 		import('general.ReservesRequest');
-		$only_prefix = false;
+
+		$searchType = Course::COURSE_SEARCH_RETURN_ALL;
 		if (preg_match("/browseCourses$/", ReservesRequest::getReferringPage())) {
-			$only_prefix = true;
+			$searchType = Course::COURSE_SEARCH_RETURN_ONLY_PREFIX;
 		}
-		$fields = Course::getSearchFields($only_prefix);
+		$fields = Course::getSearchFields($searchType);
 
 		$semesterSQL = '';
 		$sqlParams = array();
-		if ($semester != '') {
-			if (preg_match('|^(\d+)(\w{2})$|', $semester, $matches)) {
-				$year = $matches[1];
-				$term = $matches[2];
-
-				$semesterSQL = ', section s, reservesRecord r, itemHeading i WHERE s.courseID = c.courseID AND s.year = ? AND s.term = ? AND s.sectionID = i.sectionID AND i.itemHeadingID =  r.itemHeadingID';
-				$sqlParams = array($year, $term);
-			}
+		$adminRequest = $reservesUser->isAdmin();
+		if ($semester == '') {
+			$semester = Section::getCurrentSemester();
+			$adminRequest = true;
 		}
 
-		$whereClause = self::buildMySQLWhereClause($fields, $keywords, $semesterSQL, $db);
-		$limitClause = " LIMIT $offset, 25";
+		if (preg_match('|^(\d+)(\w{2})$|', $semester, $matches)) {
+			$year = $matches[1];
+			$term = $matches[2];
+
+			$sectionRoleSQL = ' WHERE ';
+			if ($instructor != '') {
+				$sectionRoleSQL = ', sectionRole sr WHERE sr.sectionID = s.sectionID AND ';
+			}
+			if (!$adminRequest) {
+				$semesterSQL = ', section s, reservesRecord r, itemHeading i ' . $sectionRoleSQL . ' s.courseID = c.courseID AND s.year = ? AND s.term = ? AND s.sectionID = i.sectionID AND i.itemHeadingID =  r.itemHeadingID';
+			}
+			else {
+				$semesterSQL = ', section s ' . $sectionRoleSQL . ' s.courseID = c.courseID AND s.year = ? AND s.term = ? ';
+			}
+
+			$sqlParams = array($year, $term);
+		}
 
 		/* first query to get the total number of records */
-		$sql = 'SELECT count(s.sectionID) AS total FROM course c ' . $whereClause;
+		$sql = 'SELECT DISTINCT s.sectionID FROM course c';
+
+		$whereClause = self::buildMySQLWhereClause($fields, $keywords, $semesterSQL, $instructor, $db);
+		$sql .= $whereClause;
 
 		$returnStatement = $db->Execute($sql, $sqlParams);
-		$recordObject = $returnStatement->FetchNextObject();
-		$totalRecords = $recordObject->TOTAL;
+		$totalRecords = $returnStatement->RecordCount();
 
 		if ($totalRecords > 0) { // there's no point in doing the real query again, if we have zero records that matched the full one
-			$sql = 'SELECT s.sectionID FROM course c ' . $whereClause . $limitClause;
+
+			$sql = 'SELECT DISTINCT s.sectionID FROM course c';
+
+			$limitClause = " LIMIT $offset, 25";
+			$sql .= $whereClause . $limitClause;
+
+			error_log($sql);
 			$returnStatement = $db->Execute($sql, $sqlParams);
 			if ($returnStatement->RecordCount() > 0) {
-				import('items.Section');
 				$matchedSections = array();
 				while ($recordObject = $returnStatement->FetchNextObject()) {
 					$matchedSections[] = new Section($recordObject->SECTIONID);
 				}
-				return array ('0' => $matchedSections, '1' => $totalRecords);
+
+				return array ('0' => $matchedSections, '1' => $totalRecords, '2' => 'SEMESTER');
 			} else {
 				return array();
 			}
@@ -64,15 +85,14 @@ class ReservesSearch {
 	}
 
 	/**
-	 * @brief returns an array of section prefixes in the system (like BIOL or CS or MATH)
-	 * @return Array
+	 * @brief returns an array of section prefixes in the system (like BIOL or CS or MATH).
+	 * @return Array A structure of the prefixes indexed by first letter.
 	 */
 	static function getActiveSectionPrefixes() {
 
 		$db = getDB();
 		$sql = 'SELECT count(s.sectionID) AS total, prefix from section s, course c  WHERE c.courseID = s.courseID GROUP BY prefix';
 		/* next one is commented out because many programs are missing from programPrefix */
- //	   $sql = 'SELECT count(s.sectionID) AS total , prefix, programName from section s, course c, programPrefix p  WHERE c.courseID = s.courseID AND p.programPrefix = c.prefix  GROUP BY prefix';
 		$returnStatement = $db->Execute($sql);
 		$sectionPrefixes = array();
 		while ($recordObject = $returnStatement->FetchNextObject()) {
@@ -90,9 +110,9 @@ class ReservesSearch {
 
 	/**
 	 * @brief assembles a list of the Sections that are "active", and part of the given semester (like 2010FA).
-	 * @param int $pageOffset the first record of the current page
+	 * @param int $pageOffset the first record of the current page.
 	 * @param String $semester the semester to check.
-	 * @return an array of Section objects
+	 * @return Array the relevant Section objects.
 	 */
 	static function getSectionsWithReserves($pageOffset, $semester) {
 
@@ -118,20 +138,25 @@ class ReservesSearch {
 	}
 
 	/**
-	 * @brief assembles a search class for a MySQL style full text search
-	 * @param $fields
-	 * @param $keywords
-	 * @param $db
-	 * @return String the WHERE fragment
+	 * @brief assembles a search class for a MySQL style full text search.
+	 * @param Array $fields the fields to search again.
+	 * @param String $keywords the words to search, space delimited, tokenized by this function.
+	 * @param ADODBObject $db reference to our DB Object.
+	 * @return String the WHERE fragment.
 	 */
-	static function buildMySQLWhereClause($fields, $keywords, $semesterSQL, &$db) {
+	static function buildMySQLWhereClause($fields, $keywords, $semesterSQL, $instructor, &$db) {
 
-		$match = "MATCH (" . join(',', $fields) . ") AGAINST (" . $db->qstr($keywords) . " IN BOOLEAN MODE) GROUP BY s.sectionID ";
+		$keywordArray = preg_replace("/$/", "*", preg_split("/\s+/", $keywords));
+		$match = "MATCH (" . join(',', $fields) . ") AGAINST (" . $db->qstr(join(" ", $keywordArray)) . " IN BOOLEAN MODE) ";
 
 		if ($semesterSQL == '') {
 			$returner =  "WHERE " . $match;
 		} else {
 			$returner = $semesterSQL . " AND " . $match;
+		}
+
+		if ($instructor != '') {
+			$returner .= ' AND CONCAT(sr.firstName, sr.lastName) LIKE ' . $db->qstr('%' . $instructor . '%') . ' ';
 		}
 
 		return $returner;

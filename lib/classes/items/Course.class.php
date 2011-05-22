@@ -4,6 +4,9 @@ import('items.ElectronicReserveItem');
 
 class Course extends ElectronicReserveItem {
 
+	const COURSE_SEARCH_RETURN_ONLY_PREFIX = 1;
+	const COURSE_SEARCH_RETURN_ALL = 2;
+
 	function __construct($courseID = 0) {
 
 		if ($courseID > 0) {
@@ -28,8 +31,8 @@ class Course extends ElectronicReserveItem {
 
 	/**
 	 * @brief returns the UNB program title for a code, by querying the programName table. For example, ED -> Education.
-	 * @param String $code the program code
-	 * @return String the program name
+	 * @param String $code the program code.
+	 * @return String the program name.
 	 */
 	private function _getProgramNameByCode($code) {
 		$db = getDB();
@@ -44,8 +47,62 @@ class Course extends ElectronicReserveItem {
 	}
 
 	/**
-	 * @brief convenience function for getting the course ID
-	 * @return Int the course id
+	 * @brief a static function that returns an array of the MySQL fields in the course table
+	 * to search with the regular MySQL keyword search.
+	 * @return Array the field names.
+	 */
+	public static function getSearchFields($searchType = self::COURSE_SEARCH_RETURN_ALL) {
+		if ($searchType == self::COURSE_SEARCH_RETURN_ONLY_PREFIX) {
+			$returner = array('prefix');
+		} else {
+			$returner = array('courseName', 'prefix', 'courseNumber');
+		}
+		return $returner;
+	}
+
+	/**
+	 * @brief used in the AJAX call on edit/create Course template to auto populate the Course Numbers field.
+	 * @param String $terms the beginning partial match for a set of course numbers (like 11 or 40 or something)
+	 * @return the String sent back to the AJAX controller.
+	 */
+	public static function getAllNumbers($terms) {
+		$db = getDB();
+		$terms .= '%';
+		$returnStatement = $db->Execute('SELECT DISTINCT courseNumber, courseName FROM course WHERE courseNumber LIKE ?', array($terms));
+		$output = '';
+		if ($returnStatement->RecordCount() > 0) {
+			while($recordRow = $returnStatement->FetchNextObject()) {
+				$output .= $recordRow->COURSENUMBER . '|' . $recordRow->COURSENAME . "\n";
+			}
+		} else {
+			return false;
+		}
+		return $output;
+	}
+
+	/**
+	 * @brief used in the AJAX call on edit/create Course template to auto populate the Course Prefix field.
+	 * @param String $terms the beginning partial match for a set of course prefixes (like ENG or BIO)
+	 * @return the String sent back to the AJAX controller.
+	 */
+	public static function getAllPrefixes($terms) {
+		$db = getDB();
+		$terms .= '%';
+		$returnStatement = $db->Execute('SELECT programPrefix, programName FROM programPrefix WHERE programPrefix LIKE ?', array($terms));
+		$output = '';
+		if ($returnStatement->RecordCount() > 0) {
+			while($recordRow = $returnStatement->FetchNextObject()) {
+				$output .= $recordRow->PROGRAMPREFIX . '|' . $recordRow->PROGRAMNAME . "\n";
+			}
+		} else {
+			return false;
+		}
+		return $output;
+	}
+
+	/**
+	 * @brief convenience function for getting the course ID.
+	 * @return Int the course id.
 	 */
 	function getCourseID() {
 		$returner = $this->getAttribute('courseid');
@@ -53,8 +110,8 @@ class Course extends ElectronicReserveItem {
 	}
 
 	/**
-	 * @brief convenience function for getting the course name
-	 * @return String the course name, ie "English for Dummies"
+	 * @brief convenience function for getting the course name.
+	 * @return String the course name, ie "English for Dummies".
 	 */
 	function getCourseName() {
 		$returner = $this->getAttribute('coursename');
@@ -63,8 +120,8 @@ class Course extends ElectronicReserveItem {
 
 	/**
 	 * @brief this concatenates the relevant bits of the course info to build the internal
-	 * string used by other applications, like the calendar and BlackBoard
-	 * @return String the code for the course
+	 * string used by other applications, like the calendar and BlackBoard.
+	 * @return String the code for the course.
 	 */
 	function getCourseCode() {
 
@@ -73,8 +130,8 @@ class Course extends ElectronicReserveItem {
 	}
 
 	/**
-	 * @brief convenience function for getting the section ID
-	 * @return Int the section id
+	 * @brief convenience function for getting the section ID.
+	 * @return Int the section id.
 	 */
 	function getPrefix() {
 		$returner = $this->getAttribute('prefix');
@@ -82,8 +139,8 @@ class Course extends ElectronicReserveItem {
 	}
 
 	/**
-	 * @brief convenience function for getting the section ID
-	 * @return Int the section id
+	 * @brief convenience function for getting the section ID.
+	 * @return Int the section id.
 	 */
 	function getNumber() {
 		$returner = $this->getAttribute('coursenumber');
@@ -92,7 +149,7 @@ class Course extends ElectronicReserveItem {
 
 	/**
 	 * @brief returns a list of Section objects that have been created for this course.
-	 * @return array $sections the sections for this course
+	 * @return Array the sections for this course.
 	 */
 	function getSections() {
 
@@ -108,20 +165,6 @@ class Course extends ElectronicReserveItem {
 		}
 
 		return $sections;
-	}
-
-	/**
-	 * @brief a static function that returns an array of the MySQL fields in the course table
-	 * to search with the regular MySQL keyword search
-	 * @return array the field names
-	 */
-	public static function getSearchFields($only_prefix = false) {
-		if ($only_prefix) {
-			$returner = array('prefix');
-		} else {
-			$returner = array('courseName', 'prefix', 'courseNumber');
-		}
-		return $returner;
 	}
 
 	/**
@@ -169,9 +212,9 @@ class Course extends ElectronicReserveItem {
 
 	/**
 	 * @brief function which assembles a Form object representing this course, so it can be edited by a course admin.
-	 * @return Form the form object
+	 * @return Form the form object.
 	 */
-	function assembleEditForm(&$basePath) {
+	function assembleEditForm($basePath) {
 
 		import('forms.Form');
 		$action = $this->getCourseID() > 0 ? 'editCourse' : 'createNewCourse';

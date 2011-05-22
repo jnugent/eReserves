@@ -110,7 +110,7 @@ class LDAPConnection {
 		if ($ldapConnection && $uid != '') {
 			$ldapBind = ldap_bind($ldapConnection, $config->getSetting('ldap', 'administration_dn'), $config->getSetting('ldap', 'administration_pass'));
 			if ($ldapBind) {
-				$result = ldap_search($ldapConnection, "dc=unb,dc=ca", "(uid=$uid)", array('dn', 'cn', 'mail', 'givenName', 'uid', $studentField, $instructorField, $accountTypeField));
+				$result = ldap_search($ldapConnection, "dc=unb,dc=ca", "(uid=$uid)", array('dn', 'cn', 'mail', 'givenName', 'sn', 'uid', $studentField, $instructorField, $accountTypeField));
 				if ($result) {
 					$entry = ldap_get_entries($ldapConnection, $result);
 					if ($entry['count'] == 1) {
@@ -151,7 +151,7 @@ class LDAPConnection {
 		if ($ldapConnection && $uid != '') {
 			$ldapBind = ldap_bind($ldapConnection, $config->getSetting('ldap', 'administration_dn'), $config->getSetting('ldap', 'administration_pass'));
 			if ($ldapBind && $uid != '') {
-				$result = ldap_search($ldapConnection, "dc=unb,dc=ca", "(uid=$uid)", array('dn', 'cn', 'mail', 'givenName', 'uid', $accountTypeField));
+				$result = ldap_search($ldapConnection, "dc=unb,dc=ca", "(uid=$uid)", array('dn', 'cn', 'mail', 'sn', 'givenName', 'uid', $accountTypeField));
 				if ($result) {
 					$entry = ldap_get_entries($ldapConnection, $result);
 					if ($entry['count'] == 1) {

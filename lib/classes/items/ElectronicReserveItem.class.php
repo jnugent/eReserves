@@ -10,7 +10,8 @@ class ElectronicReserveItem extends ReserveItem {
 
 		if ($electronicItemID > 0) {
 			$db = getDB();
-			$sql = "SELECT e.electronicItemID, e.mimeType, e.doi, e.notes, e.reservesRecordID, e.usageRights, e.url, e.itemTitle, e.originalFileName, e.restrictToLogin, e.restrictToEnroll
+			$sql = "SELECT e.electronicItemID, e.mimeType, e.doi, e.notes, e.reservesRecordID, e.usageRights, e.url, e.itemTitle, e.originalFileName, e.restrictToLogin, e.restrictToEnroll, e.dateAdded,
+					e.itemAuthor, e.itemFrom, e.itemPublisher, e.itemPages, e.itemVolIss
 					 FROM electronicItem e WHERE e.electronicItemID = ?";
 			$returnStatement = $db->Execute($sql, array($electronicItemID));
 			if ($returnStatement->RecordCount() ==  1) {
@@ -32,8 +33,8 @@ class ElectronicReserveItem extends ReserveItem {
 	}
 
 	/**
-	 * @brief returns the primary key
-	 * @return int the key
+	 * @brief returns the primary key.
+	 * @return int the key.
 	 */
 	function getElectronicItemID() {
 		$returner = $this->getAttribute('electronicitemid');
@@ -41,8 +42,8 @@ class ElectronicReserveItem extends ReserveItem {
 	}
 
 	/**
-	 * @brief returns the parent container Reserves Record
-	 * @return ReservesRecord
+	 * @brief returns the parent container Reserves Record.
+	 * @return ReservesRecord the parent ReservesRecord for this Electronic Item.
 	 */
 	function getReservesRecord() {
 		import ('items.ReservesRecord');
@@ -50,12 +51,12 @@ class ElectronicReserveItem extends ReserveItem {
 	}
 
 	/**
-	 * @brief returns the URL to an electronic resource
-	 * @return String the url
+	 * @brief returns the URL to an electronic resource.
+	 * @return String the URL.
 	 */
 	function getURL() {
 		$url = $this->getAttribute('url');
-		if (preg_match("/^http:/", $url)) {  // it's a remotely referenced page
+		if (preg_match("/^https?:/", $url)) {  // it's a remotely referenced page
 			return $url;
 		} else {  // we'll need to stream this, so build a link to our content service
 
@@ -67,8 +68,23 @@ class ElectronicReserveItem extends ReserveItem {
 	}
 
 	/**
-	 * @brief returns a boolean about whether or not the file requires logins to view
-	 * @return boolean true or false
+	 * @brief returns the notes field for a record.
+	 * @return String the concatenated fields for a Citation (essentially).
+	 */
+	function getNotes() {
+		$fields = array();
+		foreach (array('itemauthor', 'itemfrom', 'itempublisher', 'itempages', 'itemvoliss') as $field) {
+			if (($val =& $this->getAttribute($field)) != '') {
+				$fields[] = $val;
+			}
+		}
+		$returner = join(', ', $fields);
+		return $returner;
+	}
+
+	/**
+	 * @brief returns a boolean about whether or not the file requires logins to view.
+	 * @return boolean true or false.
 	 */
 	function isRestricted() {
 		if ($this->getAttribute('restricttologin') == 1) {
@@ -79,8 +95,8 @@ class ElectronicReserveItem extends ReserveItem {
 	}
 
 	/**
-	 * @brief returns a boolean about whether or not the file requires a user to be enrolled in the section to view
-	 * @return boolean true or false
+	 * @brief returns a boolean about whether or not the file requires a user to be enrolled in the section to view.
+	 * @return boolean true or false.
 	 */
 	function requiresEnrolment() {
 		if ($this->getAttribute('restricttoenroll') == 1) {
@@ -89,28 +105,38 @@ class ElectronicReserveItem extends ReserveItem {
 			return false;
 		}
 	}
+
 	/**
-	 * @brief returns the original file name, used as a "save as" hint
-	 * @return String the file name
+	 * @brief returns the original file name, used as a "save as" hint.
+	 * @return String the file name.
 	 */
 	function getLinkTitle() {
 		$name = $this->getAttribute('originalfilename');
 		if($name != '') {
 			return $name;
-		} else {
-			return $this->getURL();
+		} else { // return the URL, but truncate it to keep long urls sane.
+			$title = $this->getURL();
+			if (strlen($title) > 30) {
+				return preg_replace('{^(.{0,15}).*?(.{0,10})$}', "$1 ... $2", $title);
+			} else {
+				return $title;
+			}
 		}
 	}
 
 	/**
-	 * @brief returns the mime type of an uploaded file
-	 * @return String the mime type (ie, text/html)
+	 * @brief returns the mime type of an uploaded file.
+	 * @return String the mime type (ie, text/html).
 	 */
 	function getMimeType() {
 		$returner = $this->getAttribute('mimetype');
 		return $returner;
 	}
 
+	/**
+	 * @brief returns an image type based on the Item's mime type.
+	 * @return String the type of image file to display on the record page.
+	 */
 	function mapTypeToImg() {
 
 		$mimeMap = array(
@@ -134,8 +160,8 @@ class ElectronicReserveItem extends ReserveItem {
 	}
 
 	/**
-	 * @brief  updates or creates an ElectronicReservesItem.
-	 * @return boolean true or false on success or failure
+	 * @brief updates or creates an ElectronicReservesItem.
+	 * @return boolean true or false on success or failure.
 	 */
 	function update() {
 		$db = getDB();
@@ -144,6 +170,11 @@ class ElectronicReserveItem extends ReserveItem {
 		$itemtitle = ReservesRequest::getRequestValue('itemtitle');
 		$doi = ReservesRequest::getRequestValue('doi');
 		$notes = ReservesRequest::getRequestValue('notes');
+		$author = ReservesRequest::getRequestValue('itemauthor');
+		$publisher = ReservesRequest::getRequestValue('itempublisher');
+		$itemfrom = ReservesRequest::getRequestValue('itemfrom');
+		$pages = ReservesRequest::getRequestValue('itempages');
+		$voliss = ReservesRequest::getRequestValue('itemvoliss');
 		$electronicitemid = ReservesRequest::getRequestValue('electronicitemid');
 		$reservesrecordid = ReservesRequest::getRequestValue('reservesrecordid');
 		$usagerights = ReservesRequest::getRequestValue('usagerights');
@@ -174,14 +205,14 @@ class ElectronicReserveItem extends ReserveItem {
 
 		$electronicItemIDs = array();
 		foreach ($reservesrecordids as $reservesrecordid) {
-			$sqlParams = array($itemtitle, $doi, $mimetype, $url, $usagerights, $reservesrecordid, $originalfilename, $restricttologin, $restricttoenroll, $notes, $electronicitemid);
+			$sqlParams = array($itemtitle, $doi, $mimetype, $url, $usagerights, $reservesrecordid, $originalfilename, $restricttologin, $restricttoenroll, $notes, $author, $publisher, $itemfrom, $pages, $voliss, $electronicitemid);
 			if ($electronicitemid > 0) {
 				$sql = "UPDATE electronicItem SET itemTitle = ?, doi = ?, mimeType = ?, url = ?, usageRights = ?, reservesRecordID = ?, originalFileName = ?, restrictToLogin = ?,
-						restrictToEnroll = ?, notes = ?
+						restrictToEnroll = ?, notes = ?, itemAuthor = ?, itemPublisher = ?, itemFrom = ?, itemPages =? , itemVolIss = ?, dateAdded = now()
 						WHERE electronicItemID = ?";
 			} else {
-				$sql = "INSERT INTO electronicItem (itemTitle, doi, mimeType, url, usageRights, reservesRecordID, originalFileName, restrictToLogin, restrictToEnroll, notes, electronicItemID)
-					VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+				$sql = "INSERT INTO electronicItem (itemTitle, doi, mimeType, url, usageRights, reservesRecordID, originalFileName, restrictToLogin, restrictToEnroll, notes, itemAuthor, itemPublisher, itemFrom, itemPages, itemVolIss, electronicItemID, dateAdded)
+					VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, now())";
 			}
 			$returnStatement = $db->Execute($sql, $sqlParams);
 			if ($returnStatement) {
@@ -190,7 +221,7 @@ class ElectronicReserveItem extends ReserveItem {
 		}
 
 		if ($returnStatement) {
-			return true;
+			return $electronicItemIDs;
 		} else {
 			error_log('Error occurred: ' . $db->ErrorMsg());
 			return false;
@@ -198,8 +229,8 @@ class ElectronicReserveItem extends ReserveItem {
 	}
 
 	/**
-	 *  @brief Deletes this electronic reserve item
-	 *  @return boolean success or not
+	 *  @brief Deletes this electronic reserve item.
+	 *  @return boolean success or not.
 	 */
 	function delete() {
 
@@ -215,9 +246,10 @@ class ElectronicReserveItem extends ReserveItem {
 
 	/**
 	 * @brief  function for building a form to edit this item.
-	 * @param $basePath String the base path from the config file for URLs to other pages. Usually '/reserves'
+	 * @param $basePath String the base path from the config file for URLs to other pages. Usually '/reserves'.
+	 * @return Form the form object for this item.
 	 */
-	function assembleEditForm(&$basePath) {
+	function assembleEditForm($basePath) {
 		import('general.Config');
 		import('items.ReservesRecord');
 		$config = new Config();
@@ -241,27 +273,22 @@ class ElectronicReserveItem extends ReserveItem {
 		if (sizeof($bulkRecordIDs) > 0) {
 			$fieldSet->addField(new HiddenField( array('required' => true, 'name' => 'bulkrecordids', 'value' => join(',', $bulkRecordIDs)) ));
 		}
-		$fieldSet->addField(ReservesRecord::getUsageRightsRadio($this->getAttribute('usagerights')));
-
-		$fieldSet->addField(new TextField( array('required' => true, 'primaryLabel' => 'Item Title', 'secondaryLabel' => 'plain-text title', 'name' => 'itemtitle',
-							'value' => $this->getAttribute('itemtitle'), 'requiredMsg' => 'Please enter a title') ));
-		$fieldSet->addField(new TextField( array('required' => true, 'primaryLabel' => 'DOI', 'secondaryLabel' => 'A DOI', 'name' => 'doi',
-							'value' => $this->getAttribute('doi')) ));
-		$fieldSet->addField(new TextArea( array( 'primaryLabel' => 'Notes', 'secondaryLabel' => 'Notes or Citation', 'name' => 'notes',
-							'value' => $this->getAttribute('notes')) ));
-		/* the form contains both a URL and an Upload field, depending on how the record is created */
-		$fieldSet->addField(new HTMLBlock(array('content' => '<p>Please choose either a URL to a document, or a file on your own computer.</p>')));
 
 		$fileChoiceValue = '';
 		if ($this->getURL() != '') {
-			$fileChoiceValue = preg_match('|^http://|', $this->getURL()) ? 'filechoiceurl' : 'filechoicelocal';
+			$fileChoiceValue = preg_match('|^https?:|', $this->getURL()) ? 'filechoiceurl' : 'filechoicelocal';
 		}
 
+		/* the form contains both a URL and an Upload field, depending on how the record is created */
+		$fieldSet->addField(new HTMLBlock(array('content' => '<p>Please choose either a URL to a document, or a file on your own computer.</p>')));
+
 		$radio = new Radio( array('name' => 'fileChoice', 'value' => $fileChoiceValue, 'required' => true, 'primaryLabel' => 'File Location', 'secondaryLabel' => 'Please choose one',
-							'requiredMsg' => 'Please choose a location') );
+							'requiredMsg' => 'Please choose a location', 'onClick' => 'toggleFields()') );
 		$radio->addButton( array('id' => 'fileChoiceURL', 'value'=> 'filechoiceurl', 'caption' => 'Remote URL') );
 		$radio->addButton( array('id' => 'fileChoiceLocal', 'value'=> 'filechoicelocal', 'caption' => 'Local File') );
 		$fieldSet->addField($radio);
+
+		$fieldSet->addField(ReservesRecord::getUsageRightsRadio($this->getAttribute('usagerights')));
 
 		$fieldSet->addField(new Checkbox( array('name' => 'restricttologin', 'primaryLabel' => 'Require logins to view?', 'secondaryLabel' => 'only for uploaded files' ,'value' => $this->getAttribute('restricttologin')) ) );
 		$fieldSet->addField(new Checkbox( array('name' => 'restricttoenroll', 'primaryLabel' => 'Require section enrolment?', 'secondaryLabel' => 'only for uploaded files' ,'value' => $this->getAttribute('restricttoenroll')) ) );
@@ -271,6 +298,26 @@ class ElectronicReserveItem extends ReserveItem {
 							'validationDep' => 'function(element) { if ($("#fileChoice:checked").val() == "filechoiceurl") return true; return false; }') ));
 		$fieldSet->addField(new FileUpload( array('primaryLabel' => 'Upload', 'secondaryLabel' => 'A File on your computer', 'name' => 'uploadedfile',
 							'value' => $fileChoiceValue == 'filechoicelocal' ? $this->getAttribute('originalfilename') : '', 'validationDep' => 'function(element) {if ($("#fileChoice:checked").val() == "filechoicelocal") return true; return false; } ') ));
+
+
+		$fieldSet->addField(new TextField( array('required' => true, 'primaryLabel' => 'Item Title', 'secondaryLabel' => 'plain-text title', 'name' => 'itemtitle',
+							'value' => $this->getAttribute('itemtitle'), 'requiredMsg' => 'Please enter a title') ));
+		$fieldSet->addField(new TextField( array('primaryLabel' => 'DOI', 'secondaryLabel' => 'A DOI', 'name' => 'doi',
+							'value' => $this->getAttribute('doi')) ));
+		$fieldSet->addField(new TextArea( array( 'primaryLabel' => 'Notes', 'secondaryLabel' => 'Notes or Citation', 'name' => 'notes',
+							'value' => $this->getAttribute('notes')) ));
+
+		$fieldSet->addField(new TextField( array('primaryLabel' => 'Item Author', 'secondaryLabel' => '', 'name' => 'itemauthor',
+							'value' => $this->getAttribute('itemauthor')) ));
+		$fieldSet->addField(new TextField( array('primaryLabel' => 'From where?', 'secondaryLabel' => '', 'name' => 'itemfrom',
+							'value' => $this->getAttribute('itemfrom')) ));
+		$fieldSet->addField(new TextField( array('primaryLabel' => 'Publisher', 'secondaryLabel' => '', 'name' => 'itempublisher',
+							'value' => $this->getAttribute('itempublisher')) ));
+		$fieldSet->addField(new TextField( array('primaryLabel' => 'Volume/Issue', 'secondaryLabel' => '', 'name' => 'itemvoliss',
+							'value' => $this->getAttribute('itemvoliss')) ));
+		$fieldSet->addField(new TextField( array('primaryLabel' => 'Pages', 'secondaryLabel' => '', 'name' => 'itempages',
+							'value' => $this->getAttribute('itempages')) ));
+
 
 		$fieldSet->addField(new Button( array('type' => 'submit', 'label' => 'Submit')) );
 		$form->addFieldSet($fieldSet);

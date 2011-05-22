@@ -56,7 +56,7 @@
 					$classesForList[] = 'required';
 				}
 				$classesForList[] = is_a($field, 'HiddenField') ? 'hide' : 'row';
-				$returner .= "\n" . '<li class="' . join(" ", $classesForList)  . '">' . "\n";
+				$returner .= "\n" . '<li id="li-' . $field->getProperty('name'). '" class="' . join(" ", $classesForList)  . '">' . "\n";
 				$returner .= $field->display();
 				$returner .= '</li>' . "\n";
 			}

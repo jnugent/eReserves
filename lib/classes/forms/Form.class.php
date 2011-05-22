@@ -208,7 +208,7 @@
 		 * required elements if it is required for validation.
 		 * @param FormField the field to add
 		 */
-		public function addFieldSet(&$fieldSet) {
+		public function addFieldSet($fieldSet) {
 
 			import('general.ReservesRequest');
 			foreach ($fieldSet->getFields() as $field) {

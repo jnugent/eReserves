@@ -8,8 +8,10 @@
 {% endblock %}
 
 {% block breadcrumb %}
-	<div id="reservesBreadCrumb"><p>{{ breadCrumb }}</p></div>
+	<div id="reservesBreadCrumb"><p>{% autoescape false %}{{ breadCrumb }}{% endautoescape %}</p></div>
 {% endblock %}
+
+{% set displayLoginMessage = false %}
 
 {% block action %}
 	{% if opPerformed %}
@@ -23,5 +25,7 @@
 	{% block listspace %}{% endblock %}
 	
 {% endblock %}
+{% autoescape false %}
 {{ extraJS }}
+{% endautoescape %}
 {{ page.getFooter(user) }}

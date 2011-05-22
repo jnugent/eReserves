@@ -9,7 +9,7 @@
 				<th>User ID</th><th>User's Name</th><th>Email Address</th>
 			</tr>
 			{% for uid, terms in validEntries %}
-			<tr {% if loop.index|even %}class="plain"{% endif %}>
+			<tr {% if loop.index is even %}class="plain"{% endif %}>
 				<td><a href="{{ basePath }}/index.php/searchByUser/{{ uid }}">{{ uid }}</a></td><td>{{ terms[1] }}</td><td><a href="mailto:{{ email }}">{{ terms[0] }}</a></td>
 			</tr>
 		{% endfor %}

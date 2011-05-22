@@ -122,7 +122,7 @@
 		{% for code, section in sections %}
 			{% if section %}
 				{% set headings = section.getHeadings() %}
-				<tr id="{{ section.getSectionID }}" {% if loop.index|even %}class="plain"{% endif %}>
+				<tr id="{{ section.getSectionID }}" {% if loop.index is even %}class="plain"{% endif %}>
 					<td>{{ loop.index }}</td>
 					<td><a href="{{ basePath }}/index.php/viewReserves/{{ section.getSectionID }}">{{ section.getCalendarCourseCode|e }}</a></td> 
 					<td>
@@ -138,7 +138,7 @@
 							<a href="{{ basePath }}/index.php/editSection/{{ section.getSectionID }}">Edit</a> | <span><a href="#" id="unenrolLink-{{ section.getSectionID }}" onClick="showUnenrolModal({{ section.getSectionID }})">Unenrol Students</a></span> |
 						{% endif %}
 						{% if user.canAdministerSection(section.getSectionID) or (user.isAdmin and not user.isActing) %}
-							<a href="{{ basePath }}/index.php/assignInstructors/{{ section.getSectionID }}/0">Instructors</a> | <a href="{{ basePath }}/index.php/itemHeadings/{{ section.getSectionID }}/0">Headings</a>
+							<a href="{{ basePath }}/index.php/assignPeople/{{ section.getSectionID }}/0">Instructors</a> | <a href="{{ basePath }}/index.php/itemHeadings/{{ section.getSectionID }}/0">Headings</a>
 						{% endif %}
 					</td>
 					{% else %}
@@ -148,27 +148,6 @@
 						<td class="center"><input type="checkbox" class="sectionChk" name="sectionIDs[]" value="{{ section.getSectionID }}" /></td>
 					{% endif %}
 				</tr>
-<!--
-				{%  for heading in section.getHeadings() %}
-					{% set reserves = heading.getListedReserves %}
-
-					{% if reserves|length > 0 %}
-						<tr>
-							<th>&nbsp;</th>
-							<th colspan="{{ colspan }}">
-								{{ heading.getHeadingName }}
-							</th>
-						</tr>
-						{% for reserve in reserves %}
-							<tr>
-								<td>{{ loop.index }}</td>
-								<td colspan="{{ colspan }}"><a href="{{ basePath }}/index.php/viewReserve/{{ reserve.getReservesRecordID }}">{{ reserve.getTitle }}</a></td>
-							</tr>
-						{% endfor %}
-					{%	endif %}
-
-				{% endfor %}
--->
 			{% else %}
 				<tr>
 					<td>{{ loop.index }}</td>

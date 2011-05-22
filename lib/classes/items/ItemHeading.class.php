@@ -4,10 +4,26 @@ import('items.ElectronicReserveItem');
 
 class ItemHeading extends ElectronicReserveItem {
 
+	/**
+	 * @brief a static function for creating a new ItemHeading when handed a sectionID and a headingTitle String.
+	 * @param int $sectionID the primary key of the section.
+	 * @param String $headingTitle the string of text for this heading title.
+	 * @return int the newly created record ID, or the id of that heading if it already exists, or 0 on failure.
+	 */
 	static function create($sectionID, $headingTitle) {
 		$db = getDB();
 		$sectionID = (int) $sectionID;
 		if ($sectionID > 0) {
+
+			/* first test to make sure this headingTitle does not already exist*/
+
+			$sql = "SELECT itemHeadingID FROM itemHeading WHERE sectionID = ? AND headingTitle = ?";
+			$returnStatement = $db->Execute($sql, array($sectionID, $headingTitle));
+			if ($returnStatement->RecordCount() == 1) {
+				$recordRow = $returnStatement->FetchNextObject();
+				return $recordRow->ITEMHEADINGID;
+			}
+
 			/* we should get the max sequence value first, so this new section is after it in browse lists */
 			$sql = "SELECT max(sequence) as maxsequence FROM itemHeading WHERE sectionID = ?";
 			$returnStatement = $db->Execute($sql, array($sectionID));
@@ -16,10 +32,10 @@ class ItemHeading extends ElectronicReserveItem {
 				$recordRow = $returnStatement->FetchNextObject();
 				$sequence = (int) $recordRow->MAXSEQUENCE;
 				$sequence ++;
-			} else {
+			} else { // zero records.  First heading for this Section?
 				$sequence = 1;
 			}
-			$sql = "INSERT INTO itemHeading (headingTitle, sectionID, sequence, itemHeadingID) VALUES (?, ?, '1', '0')";
+			$sql = "INSERT INTO itemHeading (headingTitle, sectionID, sequence, itemHeadingID) VALUES (?, ?, ?, '0')";
 			$returnStatement = $db->Execute($sql, array($headingTitle, $sectionID, $sequence));
 			if ($returnStatement) {
 				return $db->Insert_ID();
@@ -52,8 +68,8 @@ class ItemHeading extends ElectronicReserveItem {
 	}
 
 	/**
-	 * @brief convenience function for getting the ItemHeading ID
-	 * @return Int the itemHeading id
+	 * @brief convenience function for getting the ItemHeading ID.
+	 * @return Int the itemHeading id.
 	 */
 	function getItemHeadingID() {
 		$returner = $this->getAttribute('itemheadingid');
@@ -61,8 +77,8 @@ class ItemHeading extends ElectronicReserveItem {
 	}
 
 	/**
-	 * @brief convenience function for getting the ItemHeading title
-	 * @return Int the headingtitle
+	 * @brief convenience function for getting the ItemHeading title.
+	 * @return Int the headingtitle.
 	 */
 	function getHeadingName() {
 		$returner = $this->getAttribute('headingtitle');
@@ -70,16 +86,16 @@ class ItemHeading extends ElectronicReserveItem {
 	}
 
 	/**
-	 * @brief convenience method for setting the section ID
-	 * @param $sectionID the section id for this heading
+	 * @brief convenience method for setting the section ID.
+	 * @param $sectionID the section id for this heading.
 	 */
 	function setSectionID($sectionID) {
 		$this->setAttribute('sectionid', intval($sectionID));
 	}
 
 	/**
-	 * @brief convenience method for getting the section ID
-	 * return $sectionID the section id for this heading
+	 * @brief convenience method for getting the section ID.
+	 * return $sectionID the section id for this heading.
 	 */
 	function getSectionID() {
 		$returner = $this->getAttribute('sectionid');
@@ -87,8 +103,8 @@ class ItemHeading extends ElectronicReserveItem {
 	}
 
 	/**
-	 * @brief returns a list of the ReservesRecord objects assigned to this ItemHeading
-	 * @return Array ItemHeading objects
+	 * @brief returns a list of the ReservesRecord objects assigned to this ItemHeading.
+	 * @return Array ItemHeading objects.
 	 */
 	function getListedReserves() {
 		$db = getDB();
@@ -131,7 +147,7 @@ class ItemHeading extends ElectronicReserveItem {
 	}
 
 	/**
-	 * @brief a convenience function to just toggle a heading title when we use our AJAX method
+	 * @brief a convenience function to just toggle a heading title when we use our AJAX method.
 	 * @return boolean true or false, if the update succeeded or not.
 	 */
 	function updateTitle() {
@@ -148,11 +164,12 @@ class ItemHeading extends ElectronicReserveItem {
 			}
 		}
 	}
+
 	/**
 	 * @brief function which assembles a Form object representing this item heading, so it can be edited by a course admin.
-	 * @return Form the form object
+	 * @return Form the form object.
 	 */
-	function assembleEditForm(&$basePath) {
+	function assembleEditForm($basePath) {
 
 		import('forms.Form');
 		$action = 'itemHeadings';

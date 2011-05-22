@@ -3,9 +3,6 @@
 {% block listspace %}
 
 	{% set id = section.getSectionID %}
-	{% if itemHeadings|length == 0 %}
-			<p>No headings were found for this section.  Create one?</p>
-	{% endif %}
 
 	<script src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.8/jquery-ui.min.js"></script>
 
@@ -54,6 +51,7 @@
 			});
 		});
 
+		var totalHeadings = {{ itemHeadings|length }};
 		function showDeleteModal(sectionID, itemHeadingID) {
 			$("#deleteHeadingConfirm").html('This will delete this Item Heading.  This cannot be undone.  Are you sure?');
 			$("#deleteHeadingConfirm").dialog("option", 
@@ -67,10 +65,15 @@
 									headingLinkRow = $('#' + itemHeadingID);
 									$("#deleteHeadingConfirm").dialog("close");
 									headingLinkRow.fadeOut();
-							}
-						});
-
-						} },
+									totalHeadings = totalHeadings - 1;
+									
+									if (totalHeadings == 0) {
+										$("#itemHeadings-{{ id }}").hide();
+									}
+								}
+							});
+						}
+					},
 					{ text: "Cancel", click: function() { $(this).dialog("close"); return false; } }
 				]
 			);
@@ -81,10 +84,10 @@
 	<div id="deleteHeadingConfirm"></div>
 	{% if itemHeadings|length > 0 %}
 		<table id="itemHeadings-{{ id }}"  class="reservesTable" cellpadding="5" border="0">
-			<caption><p>There are {{ itemHeadings|length }} headings for this section. You can drag and drop them to reorder the sequence, if you like.</p></caption>
+			<caption><p>Here are the headings for this section.  You can drag and drop them to reorder the sequence, if you like.</p></caption>
 			<tr class="nodrag nodrop"><th>Position</th><th>Heading Name (double click to edit)</th><th colspan="2">Status</th></tr>
 			{% for heading in itemHeadings %}
-				<tr id="{{ heading.getItemHeadingID }}"{% if loop.index|even %} class="plain"{% endif %}>
+				<tr id="{{ heading.getItemHeadingID }}"{% if loop.index is even %} class="plain"{% endif %}>
 					<td>{{ loop.index }}</td><td class="headingTitle">{{ heading.getHeadingName|e }}</td>
 					<td>{{ heading.getListedReserves|length }} reserves assigned</td>
 					<td>

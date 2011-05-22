@@ -17,7 +17,7 @@ class Template {
 		$this->templateDir = $config->getSetting('template', 'template_dir');
 		$loader = new Twig_Loader_Filesystem($this->templateDir);
 		$this->twig = new Twig_Environment($loader, array(
-  			'cache' => $config->getSetting('template', 'template_cache'),
+			'cache' => $config->getSetting('template', 'template_cache'),
 			'auto_reload' => true
 		));
 	}
@@ -26,8 +26,8 @@ class Template {
 	 * @brief this function loads a template (either cached or not) and returns it rendered with
 	 * values filled in, if any.
 	 *
-	 * @param $template String the name of the template to load
-	 * @param $templateState Array the variables in name/value pairs for the template
+	 * @param $template String the name of the template to load.
+	 * @param $templateState Array the variables in name/value pairs for the template.
 	 */
 	public function loadTemplate($template, $templateState = array()) {
 
@@ -37,5 +37,4 @@ class Template {
 		}
 	}
 }
-
 ?>

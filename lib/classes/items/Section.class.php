@@ -30,8 +30,8 @@ class Section extends ElectronicReserveItem {
 
 	/**
 	 * @brief returns the UNB program title for a code, by querying the programName table. For example, ED -> Education.
-	 * @param String $code the program code
-	 * @return String the program name
+	 * @param String the program code.
+	 * @return String the program name.
 	 */
 	private function _getProgramNameByCode($code) {
 
@@ -47,9 +47,9 @@ class Section extends ElectronicReserveItem {
 	}
 
 	/**
-	 * @brief Static method for splitting up the calendar code and returning the bits and pieces
-	 * @param String $code (see source for an example)
-	 * @return Array the fragments
+	 * @brief Static method for splitting up the calendar code and returning the bits and pieces.
+	 * @param String $code (see source for an example).
+	 * @return Array the calendar code fragments.
 	 */
 	static function parseCalendarCode($code) {
 
@@ -69,9 +69,9 @@ class Section extends ElectronicReserveItem {
 	}
 
 	/**
-	 * @brief Static method for building a Section based on the Calendar code format
-	 * @param String $code the section code like 2010FA_CS*1000_FR01A or something
-	 * @return Section the section object if it can be created, null otherwise
+	 * @brief Static method for building a Section based on the Calendar code format.
+	 * @param String $code the section code like 2010FA_CS*1000_FR01A or something.
+	 * @return Section the section object if it can be created, null otherwise.
 	 */
 	static function getSectionFromCalendarCode($code) {
 
@@ -104,8 +104,8 @@ class Section extends ElectronicReserveItem {
 	/**
 	 * @brief a convenience function for building a list of moving-window semester terms for a given course. It centers the current year in a ten year
 	 * window, and returns an array of each of those ten years with the semester codes attached to them.
-	 * @param $noFutureTerms boolean whether or not to display sections that are in the future
-	 * @return Array the semesters
+	 * @param $noFutureTerms boolean whether or not to display sections that are in the future.
+	 * @return Array the semesters for the dropdown list.
 	 */
 	static function _getPlausibleSemesters($noFutureYears = false) {
 
@@ -134,7 +134,7 @@ class Section extends ElectronicReserveItem {
 
 	/**
 	 * @brief determines if a given semester is a possible one, within the context of the eReserves system.
-	 * @param String $semester the semester to test, like 2010FA
+	 * @param String the semester to test, like 2010FA.
 	 * @return boolean is it valid?
 	 */
 	static function isValidSemester($semester) {
@@ -148,7 +148,7 @@ class Section extends ElectronicReserveItem {
 
 	/**
 	 * @brief determines what the current semester is, and returns it.
-	 * @return String the current semester code
+	 * @return String the current semester code.
 	 */
 	static function getCurrentSemester() {
 
@@ -161,6 +161,7 @@ class Section extends ElectronicReserveItem {
 		} else {
 			$term = 'FA';
 		}
+
 		return intval(date('Y')) . $term;
 	}
 
@@ -181,9 +182,9 @@ class Section extends ElectronicReserveItem {
 	}
 
 	/**
-	 * @brief returns a dropdown list for choosing a semester
-	 * @param String $semester the semester to preselect (like 2010FA)
-	 * @return Form $form the form object
+	 * @brief returns a dropdown list for choosing a semester.
+	 * @param String $semester the semester to preselect (like 2010FA).
+	 * @return Form $form the form object.
 	 */
 	static function assembleSemesterChooseForm($semester = '') {
 		import('forms.Form');
@@ -191,7 +192,7 @@ class Section extends ElectronicReserveItem {
 		$form = new Form(array('id' => 'viewAllReserves', 'method' => 'get', 'action' => '/reserves/index.php/' . $action . '/0'));
 		$fieldSet = new FieldSet(array('legend' => 'Choose Semester'));
 
-		$select = self::getSemesterDropdown($semester);
+		$select = self::getSemesterDropdown(FALSE, $semester);
 
 		$fieldSet->addField($select);
 		$form->addFieldSet($fieldSet);
@@ -199,18 +200,20 @@ class Section extends ElectronicReserveItem {
 		return $form;
 	}
 
+	/**
+	 * @brief convenience function for building a <select> tag containing a list of possible semesters.  Highlights the one passed in.
+	 * @param boolean $all whether or not to include a blank default so the form can be submitted with no choice.
+	 * @param String $semester the current semester.
+	 * @return Select a select form object.
+	 */
 	static function getSemesterDropdown($all = FALSE, $semester = '') {
 		$semesters = self::_getPlausibleSemesters(TRUE);
 		if ($semester == '' && $all) {
 			$semester = self::getCurrentSemester();
 		}
-		$required = $all ? true : false;
-		$secondaryLabel = !$required ? 'Leave empty to search all semesters' : 'Those with reserves are marked';
-		$select = new Select( array('name' => 'semester', 'primaryLabel' => 'Course Semester', 'secondaryLabel' => $secondaryLabel, 'required' => $required,
+		$select = new Select( array('name' => 'semester', 'primaryLabel' => 'Course Semester', 'secondaryLabel' => 'Those with reserves are marked',
 				'requiredMsg' => 'Please choose a semester', 'value' => $semester, 'onChange' => 'switchSemesters()') );
-		if (!$all) {
-			$select->addOption( array('value' => '', 'label' => '------') );
-		}
+		$select->addOption( array('value' => '', 'label' => '------') );
 		foreach ($semesters as $semesterName => $semesterReservesCount) {
 			$label = $semesterName;
 			$label .= $semesterReservesCount > 0 ? " ($semesterReservesCount)" : "";
@@ -221,8 +224,8 @@ class Section extends ElectronicReserveItem {
 	}
 
 	/**
-	 * @brief convenience function for getting the section ID
-	 * @return Int the section id
+	 * @brief convenience function for getting the section ID.
+	 * @return Int the section id.
 	 */
 	function getSectionID() {
 		$returner = $this->getAttribute('sectionid');
@@ -230,8 +233,8 @@ class Section extends ElectronicReserveItem {
 	}
 
 	/**
-	 * @brief convenience function for getting the section ID
-	 * @return Int the section id
+	 * @brief convenience function for getting the section ID.
+	 * @return Int the section id.
 	 */
 	function getPrefix() {
 		$returner = $this->getAttribute('prefix');
@@ -239,8 +242,8 @@ class Section extends ElectronicReserveItem {
 	}
 
 	/**
-	 * @brief convenience function for getting the section ID
-	 * @return Int the section id
+	 * @brief convenience function for getting the section ID.
+	 * @return Int the section id.
 	 */
 	function getNumber() {
 		$returner = $this->getAttribute('coursenumber');
@@ -248,8 +251,8 @@ class Section extends ElectronicReserveItem {
 	}
 
 	/**
-	 * @brief convenience function for getting the semester
-	 * @return String the semester
+	 * @brief convenience function for getting the semester.
+	 * @return String the semester.
 	 */
 	function getSemester() {
 		$returner = $this->getAttribute('year') . '/' . $this->getAttribute('term');
@@ -257,8 +260,8 @@ class Section extends ElectronicReserveItem {
 	}
 
 	/**
-	 * @brief convenience function for getting the course Name
-	 * @return String the course name
+	 * @brief convenience function for getting the course Name.
+	 * @return String the course name.
 	 */
 	function getCourseName() {
 		$returner = $this->getAttribute('coursename');
@@ -266,9 +269,18 @@ class Section extends ElectronicReserveItem {
 	}
 
 	/**
+	 * @brief convenience function for getting the section number.
+	 * @return String the section number.
+	 */
+	function getSectionNumber() {
+		$returner = $this->getAttribute('sectionnumber');
+		return $returner;
+	}
+
+	/**
 	 * @brief this concatenates the relevant bits of the course info to build the internal
-	 * string used by other applications, like the calendar and BlackBoard
-	 * @return String the code for the course
+	 * string used by other applications, like the calendar and BlackBoard.
+	 * @return String the code for the course.
 	 */
 	function getCalendarCourseCode() {
 
@@ -278,7 +290,7 @@ class Section extends ElectronicReserveItem {
 
 	/**
 	 * @brief this concatenates the relevant bits of the course prefix and number to return a shorter version of the course code.
-	 * @return String the short code for the course
+	 * @return String the short code for the course.
 	 */
 	function getShortCourseCode() {
 
@@ -337,6 +349,7 @@ class Section extends ElectronicReserveItem {
 			return false;
 		}
 	}
+
 	/**
 	 * @brief returns a list of usernames and the roles that have been assigned to them, for this section.
 	 * @return Array the users and roles.
@@ -359,6 +372,10 @@ class Section extends ElectronicReserveItem {
 		return $sectionUsers;
 	}
 
+	/**
+	 * @brief returns a string containing the comma separated names of the instructors for a section.
+	 * @return String the instructors.
+	 */
 	function getInstructors() {
 
 		import('auth.ReservesUser');
@@ -372,29 +389,37 @@ class Section extends ElectronicReserveItem {
 
 		return join(', ', $instructors);
 	}
+
 	/**
-	 * @brief adds or updates a role for a user, for this section
-	 * @param String $reservesUserName
-	 * @param int $roleID
+	 * @brief adds or updates a role for a user, for this section.
+	 * @param String $reservesUserName the user name to assign the role to.
+	 * @param int $roleID the chosen role.
+	 * @return boolean true or false, if the SQL query worked and the role was assigned.
 	 */
 	function assignSectionRoleForUserID($reservesUserName, $roleID) {
+		import('auth.LDAPConnection');
+		$userEntry = LDAPConnection::getUserLDAPInfo($reservesUserName);
+		$givenName = $userEntry['givenname'][0];
+		$surName = $userEntry['sn'][0];
+
 		$db = getDB();
 		$sql = "SELECT r.roleID FROM sectionRole r WHERE r.sectionID = ? AND r.userName = ?";
 		$returnStatement = $db->Execute($sql, array($this->getSectionID(), $reservesUserName));
 		if ($returnStatement->RecordCount() == 1) { // there is already a role for this user and this section
-			$sql = "UPDATE sectionRole SET roleID = ? WHERE sectionID = ? AND userName = ?";
+			$sql = "UPDATE sectionRole SET roleID = ?, firstName = ?, lastName = ? WHERE sectionID = ? AND userName = ?";
 		} else {
-			$sql = "INSERT INTO sectionRole (sectionRoleID, roleID, sectionID, userName) VALUES (0, ?, ?, ?)";
+			$sql = "INSERT INTO sectionRole (sectionRoleID, roleID, firstName, lastName, sectionID, userName) VALUES (0, ?, ?, ?, ?, ?)";
 		}
 
-		$sqlParams = array($roleID, $this->getSectionID(), $reservesUserName);
+		$sqlParams = array($roleID, $givenName, $surName, $this->getSectionID(), $reservesUserName);
 		$returnStatement = $db->Execute($sql, $sqlParams);
 		return $returnStatement;
 	}
 
 	/**
-	 * @removes a user from this section
-	 * @param String $reservesUserName
+	 * @removes a user from this section.
+	 * @param String $reservesUserName the name to remove.
+	 * @return boolean true or false.
 	 */
 	function removeSectionRoleForUserID($reservesUserName) {
 		$db = getDB();
@@ -411,7 +436,7 @@ class Section extends ElectronicReserveItem {
 
 	/**
 	 * @brief returns a list of ItemHeading objects that have been created for this course.
-	 * @return array $itemHeadings the headings for this course
+	 * @return array $itemHeadings the headings for this course.
 	 */
 	function getHeadings() {
 
@@ -431,8 +456,8 @@ class Section extends ElectronicReserveItem {
 
 	/**
 	 * brief determines if a heading has been assigned to a section or not.
-	 * @param String $headingName the heading to test
-	 * @return ItemHeading or false, if it has it or not
+	 * @param String $headingName the heading to test.
+	 * @return ItemHeading or false, if it has it or not.
 	 */
 	function hasHeading($headingName) {
 		foreach ($this->getHeadings() as $heading) {
@@ -445,8 +470,8 @@ class Section extends ElectronicReserveItem {
 
 	/**
 	 * @brief adds a new ItemHeading to this section, with the assigned heading name.
-	 * @param String $headingName the name to use
-	 * @return int the itemHeadingID of the new Heading
+	 * @param String $headingName the name to use.
+	 * @return int the itemHeadingID of the new Heading.
 	 */
 	function addHeading($headingName) {
 		import ('items.ItemHeading');
@@ -456,7 +481,7 @@ class Section extends ElectronicReserveItem {
 
 	/**
 	 * @brief deletes an ItemHeading object assigned to this Section.
-	 * @param int $itemHeadingID the ID of the heading to remove.
+	 * @param int the ID of the heading to remove.
 	 * @return boolean true or false on success or failure.
 	 */
 	function deleteHeading($itemHeadingID) {
@@ -470,9 +495,10 @@ class Section extends ElectronicReserveItem {
 			return false;
 		}
 	}
+
 	/**
 	 * @brief returns a total number of reserves assigned to this section.  Used to generate a list on the viewSections template.
-	 * @return int the number of reserves in the section
+	 * @return int the number of reserves in the section.
 	 */
 	function getTotalNumberOfReserves() {
 
@@ -486,8 +512,8 @@ class Section extends ElectronicReserveItem {
 	}
 
 	/**
-	 * @brief returns an array of ReservesRecord objects for this Section
-	 * @return array
+	 * @brief returns an array of ReservesRecord objects for this Section.
+	 * @return Array the ReservesRecord objects.
 	 */
 	function getReserves() {
 
@@ -506,8 +532,8 @@ class Section extends ElectronicReserveItem {
 
 	/**
 	 * @brief a static function that returns an array of the MySQL fields in the course table
-	 * to search with the regular MySQL keyword search
-	 * @return array the field names
+	 * to search with the regular MySQL keyword search.
+	 * @return Array the field names.
 	 */
 	public static function getSearchFields() {
 		$returner = array('courseName', 'prefix', 'courseNumber');
@@ -571,7 +597,7 @@ class Section extends ElectronicReserveItem {
 	 * @brief function which assembles a Form object representing this course, so it can be edited by a course admin.
 	 * @return Form the form object
 	 */
-	function assembleEditForm(&$basePath) {
+	function assembleEditForm($basePath) {
 
 		import('forms.Form');
 		$action = $this->getSectionID() > 0 ? 'editSection' : 'createNewSection';

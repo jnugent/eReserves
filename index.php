@@ -6,9 +6,14 @@ import('templates.ReservesPage');
 import('auth.ReservesUser');
 import('general.ReservesRequest');
 
-ReservesRequest::forceSSL();
+$isMobileRequest = ReservesRequest::isMobile();
 
 $reservesUser = new ReservesUser();
+if ($isMobileRequest) {
+	$reservesUser->setMobile();
+}
+
+ReservesRequest::forceSSL();
 
 $extraArgs = array();
 list ($op, $objectID, $extraArgs) = ReservesRequest::getURLOp();

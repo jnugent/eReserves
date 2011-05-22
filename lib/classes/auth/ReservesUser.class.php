@@ -28,11 +28,21 @@ class ReservesUser {
 	/**
 	 * @brief called when a user logs out -- it destroys the current session and unsets the Session cookie.
 	 */
-	private function _destroySession() {
+	private function _destroySession($entry = NULL) {
 		session_start();
+		$streamURL = '';
+		if (isset($_SESSION['streamURL'])) {
+			$streamURL = $_SESSION['streamURL'];
+		}
+		if ($this->isMobile()) {
+			$entry['isMobile'] = TRUE;
+		}
 		setcookie(session_name(), '');
 		session_destroy();
 		$_SESSION = array();
+		if ($streamURL != '') {
+			$entry['streamURL'] = $streamURL;
+		}
 	}
 
 	/**
@@ -41,6 +51,7 @@ class ReservesUser {
 	 */
 	private function _createNewSession($ldapEntry) {
 		import('general.Config');
+		import('general.ReservesRequest');
 		$config = new Config();
 		$sessionLifetime = intval($config->getSetting('session', 'session_cookie_timeout'));
 		if ($sessionLifetime > 0) {
@@ -65,6 +76,14 @@ class ReservesUser {
 		$_SESSION['isAdmin'] = $localUserSettings['isAdmin'];
 		$_SESSION['lastLogin'] = $localUserSettings['lastLogin'];
 		$_SESSION['userName'] = $localUserSettings['userName'];
+		$_SESSION['isMobile'] = ReservesRequest::isMobile();
+		if (isset($ldapEntry['streamURL'])) {
+			$_SESSION['streamURL'] = $ldapEntry['streamURL'];
+		}
+
+		if (isset($ldapEntry['isMobile'])) {
+			$this->setMobile();
+		}
 
 		$this->_assignUserAttributes($_SESSION);
 	}
@@ -341,6 +360,17 @@ class ReservesUser {
 	}
 
 	/**
+	 * @brief returns a session setting depending on whether or not they originally came from a mobile website.
+	 * @return boolean mobile or not.
+	 */
+	public function isMobile() {
+		return $_SESSION['isMobile'];
+	}
+
+	public function setMobile() {
+		$_SESSION['isMobile'] = TRUE;
+	}
+	/**
 	 * @brief logs a user into Reserves.  Extracts a user id from an email address and
 	 * authenticates against LDAP only (currently).  If valid, creates a new session.
 	 */
@@ -358,7 +388,7 @@ class ReservesUser {
 			$entry = LDAPConnection::ldapAuthenticate($username, $password, LDAPConnection::LDAP_RETURN_ENTRY);
 
 			if ($entry) {
-				$this->_destroySession();
+				$this->_destroySession($entry);
 				$this->_createNewSession($entry);
 				return true;
 			}
@@ -383,7 +413,7 @@ class ReservesUser {
 	public function canPerformOp($op, $objectID) {
 
 		$anonymousOps	 = array('browseCourses', 'login', 'logout', 'loginError', 'opacProxy', 'quickSearch', 'searchByUserJSON', 'stream', 'viewReserves', 'viewReserve', 'viewAllReserves');
-		$authenticatedOps = array('viewCourses', 'viewSections');
+		$authenticatedOps = array('listCourseNumbers', 'listCoursePrefixes', 'viewCourses', 'viewSections');
 
 		if ($op == '' || in_array($op, $anonymousOps) ) {
 			return true;
@@ -483,7 +513,7 @@ class ReservesUser {
 	 * as tested by the isAdmin() function.
 	 * @return Array an array of Course objects.
 	 */
-	public function getCourseSections($offset = 0) {
+	public function getCourseSections($offset = 0, $filters = array()) {
 
 		$db = getDB();
 		$courses = array();
@@ -493,12 +523,28 @@ class ReservesUser {
 		$sqlParams = array();
 		if ($this->isAdmin() && !$this->isActing()) {
 
-			$sql = "SELECT count(DISTINCT s.courseID) AS total FROM section s"; // get the total, before limiting by page.
+			$sql = "SELECT count(DISTINCT s.courseID) AS total FROM section s, course c WHERE c.courseID = s.courseID"; // get the total, before limiting by page.
+
+			$filterSql = '';
+			if ($filters['courseNameFilter'] != '' || $filters['courseCodeFilter'] != '') {
+				$filters['courseCodeFilter'] = preg_replace("/[\s\*]/", "", $filters['courseCodeFilter']);
+				$filterSql = ' AND ';
+				if ($filters['courseNameFilter'] != '' && $filters['courseCodeFilter'] != '') {
+					$filterSql .= ' c.courseName LIKE ' . $db->quote('%' . $filters['courseNameFilter'] . '%') . ' AND CONCAT(c.prefix, c.courseNumber) LIKE ' . $db->quote('%' . $filters['courseCodeFilter'] . '%') . ' ';
+				} else if ($filters['courseNameFilter'] != '') {
+					$filterSql .= ' c.courseName LIKE ' . $db->quote('%' . $filters['courseNameFilter'] . '%');
+				} else {
+					$filterSql .= ' CONCAT(c.prefix, c.courseNumber) LIKE ' . $db->quote('%' . $filters['courseCodeFilter'] . '%');
+				}
+			}
+
+			$sql .= $filterSql;
+
 			$returnStatement = $db->Execute($sql);
 			$recordObject = $returnStatement->FetchNextObject();
 			$totalRecords = $recordObject->TOTAL;
 
-			$sql = "SELECT DISTINCT s.courseID FROM section s LIMIT $offset, 25";
+			$sql = "SELECT DISTINCT s.courseID, c.prefix FROM section s, course c WHERE c.courseID = s.courseID "  . $filterSql . " ORDER BY c.prefix ASC LIMIT $offset, 25";
 		} else {
 
 			$username = $this->isActing() ? $this->getAssumedUserName() : $this->getUserName();
@@ -508,13 +554,14 @@ class ReservesUser {
 			$config = new Config();
 
 			$sectionCodesInLDAP = LDAPConnection::getSectionsFromLDAPRecord($username);
-			foreach ($sectionCodesInLDAP[0] as $sectionCode) {
-				$section = Section::getSectionFromCalendarCode($sectionCode);
-				$accountType = $this->isActing() ? $this->getAssumedAccountType() : $this->getAccountType();
- 				if ($section)
-					$section->assignSectionRoleForUserID($username, $accountType == $config->getSetting('ldap', 'staff_field_string') ? self::ROLE_SECTION_INSTRUCTOR : self::ROLE_SECTION_STUDENT);
+			if (is_array($sectionCodesInLDAP[0])) {
+				foreach ($sectionCodesInLDAP[0] as $sectionCode) {
+					$section = Section::getSectionFromCalendarCode($sectionCode);
+					$accountType = $this->isActing() ? $this->getAssumedAccountType() : $this->getAccountType();
+	 				if ($section)
+						$section->assignSectionRoleForUserID($username, $accountType == $config->getSetting('ldap', 'staff_field_string') ? self::ROLE_SECTION_INSTRUCTOR : self::ROLE_SECTION_STUDENT);
+				}
 			}
-
 			$sqlParams = array($username);
 			$sql = "SELECT count(c.courseID) AS total FROM sectionRole r, section s, course c WHERE r.userName = ? AND s.sectionID = r.sectionID AND s.courseID = c.courseID";
 			$returnStatement = $db->Execute($sql, $sqlParams);

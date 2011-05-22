@@ -2,16 +2,20 @@
 
 {% block listspace %}
 
+	<script type="text/javascript">
+	<!-- 
+		function selectAll() {
+			$('.optionMultiple').attr({selected: "selected"});
+		}
+	// -->
+	</script>
 	<h2>Maintaining Reserves listed in '{{ itemHeading.getHeadingName }}', for {{ section.getCalendarCourseCode }}</h2>
 	
-	{{ reservesForm.display }}
-
 	{% if reserves|length > 0 %}
 	
-		<br />
 		<table class="reservesTable">
 			<caption>
-				These are the other Reserves records in this course section.
+				These are the other Reserves records in this heading.
 			</caption>
 			<tr><th>&nbsp;</th><th>Reserves Title (click to edit)</th><th>&nbsp;</th></tr>
 			{% for reserve in reserves %}
@@ -23,7 +27,9 @@
 			{% endfor %}
 		</table>
 	{% else %}
-		<p>There are no reserves in this heading yet.</p>
+		<p>There are no reserves in this heading yet.  You are about to create one.</p>
 	{% endif %}
 
+	{{ reservesForm.display }}
+	
 {% endblock %}

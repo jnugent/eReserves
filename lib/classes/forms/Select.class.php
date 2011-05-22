@@ -43,7 +43,6 @@
 			$name = htmlentities($this->getProperty('name'));
 
 			$selectedChoices = $this->_getSelectedChoices();
-
 			$returner = '<label for="' . $name . '">' . $this->getProperty('primaryLabel') . '<span class="small">' . $this->getProperty('secondaryLabel') . '</span></label>';
 			$onChange = '';
 			if ($this->getProperty('onChange') != '') {
@@ -65,8 +64,9 @@
 			$returner .= '<select ' . $size . ' ' . $onChange . ' name="' . $name . '" id="' . $name . '" ' . $multiple . '>';
 
 			foreach ($this->options as $option) {
+
 				$selected = '';
-				if (in_array($option['value'], $selectedChoices)) {
+				if (in_array($option['value'], $selectedChoices) || sizeof($options) == 1) {
 					$selected = 'selected="selected"';
 				}
 

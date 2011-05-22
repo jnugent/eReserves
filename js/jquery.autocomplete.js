@@ -500,3 +500,19 @@ jQuery.fn.indexOf = function(e){
 	}
 	return -1;
 };
+
+function findValue(li) {
+	if( li == null ) return alert("No match!");
+	// if coming from an AJAX call, let's use the Id as the value
+	if( !!li.extra ) var sValue = li.extra[0];
+	// otherwise, let's just display the value in the text box
+	else var sValue = li.selectValue;
+}
+
+function selectItem(li) {
+	findValue(li);
+}
+
+function formatItem(row) {
+	return row[0] + " (" + row[1] + ")";
+}

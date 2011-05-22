@@ -22,7 +22,7 @@ class ReservesRequest {
 	/**
 	 * @brief extracts the operation out of the request URL,  and returns it. The provision to extract an object ID (like a database key) is also here,
 	 * but that is not returned yet.
-	 * @return String the operation
+	 * @return String the operation.
 	 */
 	static function getURLOp() {
 
@@ -47,8 +47,8 @@ class ReservesRequest {
 
 	/*
 	 * @brief extract a value for a submitted form out of the $_REQUEST array.
-	 * @param String $parameter the name of the form field item
-	 * @return String or Array, the value of the submitted header value
+	 * @param String $parameter the name of the form field item.
+	 * @return String or Array, the value of the submitted header value.
 	 */
 	static function getRequestValue($parameter) {
 
@@ -64,14 +64,18 @@ class ReservesRequest {
 	}
 
 	/**
-	 * @brief returns the referring document from the _SERVER array
-	 * @return the url of the referring page
+	 * @brief returns the referring document from the _SERVER array.
+	 * @return String the url of the referring page.
 	 */
 	static function getReferringPage() {
 		$doc = $_SERVER['HTTP_REFERER'];
 		return $doc;
 	}
 
+	/**
+	 * @brief returns the remote IP address from the client.
+	 * @return String the IP address.
+	 */
 	static function getRemoteHost() {
 		$host = $_SERVER["REMOTE_ADDR"];
 		return $host;
@@ -91,9 +95,31 @@ class ReservesRequest {
 		else
 			return false;
 	}
+
 	/**
-	 * @brief redirects a user using a Location: header to a specified operation url
-	 * @param String $op the operation to redirect to
+	 * @brief determines if a referring request comes from the mobile site or not.
+	 * @return boolean true or false.
+	 */
+	static function isMobile() {
+
+		import('general.Config');
+		$config = new Config();
+		$mobileDomains = $config->getSetting('mobiledomains', 'domain');
+
+		$referringPage = self::getReferringPage();
+		foreach ($mobileDomains as $domain) {
+			$domain = quotemeta($domain);
+			if (preg_match('{' . $domain . '}', $referringPage) ) {
+
+				return true;
+			}
+		}
+		return false;
+	}
+
+	/**
+	 * @brief redirects a user using a Location: header to a specified operation url.
+	 * @param String $op the operation to redirect to.
 	 */
 	static function doRedirect($op) {
 
@@ -116,9 +142,9 @@ class ReservesRequest {
 		exit(0);
 	}
 
-	 /**
-	  * @brief shortcut function to return to the home page of the site.
-	  */
+	/**
+	 * @brief shortcut function to return to the home page of the site.
+	 */
 	static function showHomePage() {
 		import('general.Config');
 		$config = new Config();
@@ -127,8 +153,8 @@ class ReservesRequest {
 	}
 
 	/**
-	 * @brief returns the request URI from the _SERVER array
-	 * @return the url of the page
+	 * @brief returns the request URI from the _SERVER array.
+	 * @return the url of the page.
 	 */
 	static function getRequestURI() {
 		$requestURI = htmlentities($_SERVER['REQUEST_URI']);
@@ -145,7 +171,7 @@ class ReservesRequest {
 
 	/**
 	 * @brief creates a CURL object to determine the mime type of a remote URL, by issuing a HEAD request.
-	 * @param String $url
+	 * @param String $url.
 	 * @return String the Mime Type, if it can be determined.  False otherwise.
 	 */
 	static function determineMimeType($url) {

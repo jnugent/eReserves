@@ -14,6 +14,14 @@
 			}
 		}
 
+		private function _getOnClick() {
+
+			if ($this->getProperty('onClick') != '') {
+				return "onClick=\"" . $this->getProperty('onClick') . "\"";
+			} else {
+				return '';
+			}
+		}
 		/*
 		 * @brief generates the XHTML to display this set of radio buttons on a form.
 		 * @return String the XHTML for the radio button set
@@ -35,7 +43,7 @@
 				$returner .= '<label for="' . $radioButton['id'] . '">';
 				$checked = $this->getProperty('value') == $radioButton['value'] ? 'checked="checked"' : '';
 
-				$returner .= '<input type="radio" class="radio" ' . $checked . ' name="' . $name. '" id="' . $name . '" value="' . htmlentities($radioButton['value']) . '" /> '
+				$returner .= '<input type="radio" ' .$this->_getOnClick() . ' class="radio" ' . $checked . ' name="' . $name. '" id="' . $name . '" value="' . htmlentities($radioButton['value']) . '" /> '
 				. htmlentities($caption);
 				$returner .= '</label>';
 			}
