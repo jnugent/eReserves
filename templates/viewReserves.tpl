@@ -105,6 +105,16 @@
 			// -->
 		</script>
 	{% endif %}
+	<script type="text/javascript">
+		function externalLinks() { 
+			if (!document.getElementsByTagName) return; 
+			var anchors = document.getElementsByTagName("a"); 
+			for (var i=0; i<anchors.length; i++) { 
+				var anchor = anchors[i]; 
+				if (anchor.getAttribute("href") && anchor.getAttribute("rel") == "external") anchor.target = "_blank"; } 
+			} 
+			window.onload = externalLinks;
+	</script>
 
 	{% if section.getSectionID > 0 %}
 		{% set instructors = section.getInstructors %}	
@@ -137,7 +147,7 @@
 									{% if recordInfo.type == 'e' %}
 										<td width="50%" id="{{ recordInfo.id }}">
 											{% if recordInfo.loginRequired == false %}
-												<a href="{{ recordInfo.url }}" class="{{ recordInfo.class }}">{{ recordInfo.title }}</a>
+												<a rel="external" href="{{ recordInfo.url }}" class="{{ recordInfo.class }}">{{ recordInfo.title }}</a>
 											{% else %}
 												{% set displayLoginMessage = true %}
 												{{ recordInfo.title }} <img src="{{ basePath }}/images/lock.png" title="please login to access this item" height="25" />

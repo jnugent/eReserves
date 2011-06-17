@@ -25,7 +25,10 @@
 		<!--
 
 			var localFields = new Array('usagerights', 'restricttologin', 'restricttoenroll', 'uploadedfile');
-			var remoteFields = new Array('doi', 'url');
+			var remoteFields = new Array('doi', 'url', 'proxy');
+
+			var localReqFields = new Array('itemauthor', 'itempublisher', 'itemvoliss', 'itempages', 'usagerights');
+			var remoteReqFields = new Array('url');
 
 			function toggleFields() {
 				var chosenRadio = $("#fileChoice:checked").val();
@@ -40,6 +43,15 @@
 				for (i = 0 ; i < localFields.length ; i ++) {
 					$("#li-" + localFields[i]).hide();
 				}
+
+				for (i = 0 ; i < localReqFields.length ; i ++) {
+					$("#li-" + localReqFields[i]).removeClass("required");
+				}
+
+				for (i = 0 ; i < localReqFields.length ; i ++) {
+					$("#li-" + localReqFields[i]).addClass("required");
+				}
+
 				for (i = 0 ; i < remoteFields.length ; i ++) {
 					$("#li-" + remoteFields[i]).show();
 				}
@@ -49,12 +61,21 @@
 				for (i = 0 ; i < remoteFields.length ; i ++) {
 					$("#li-" + remoteFields[i]).hide();
 				}
+
+				for (i = 0 ; i < localReqFields.length ; i ++) {
+					$("#li-" + localReqFields[i]).addClass("required");
+				}
+				for (i = 0 ; i < remoteReqFields.length ; i ++) {
+					$("#li-" + remoteReqFields[i]).removeClass("required");
+				}
+
 				for (i = 0 ; i < localFields.length ; i ++) {
 					$("#li-" + localFields[i]).show();
 				}
 			}
 			
 			$(document).ready(function() {
+				$("#tabs").bind('tabsshow', function (event, ui) { focusTextField(); } );
 				toggleFields();
 			});
 		// -->

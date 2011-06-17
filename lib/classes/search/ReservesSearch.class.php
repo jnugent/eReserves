@@ -12,7 +12,7 @@ class ReservesSearch {
 	 * @param $keywords the string to look for.
 	 * @return array an array of Course objects that matched, or an empty array if none.
 	 */
-	static function searchSections($reservesUser, $keywords, $semester, $instructor, $offset = 0) {
+	static function searchSections($reservesUser, $keywords, $semester, $offset = 0) {
 
 		$db = getDB();
 		import('items.Course');
@@ -38,9 +38,7 @@ class ReservesSearch {
 			$term = $matches[2];
 
 			$sectionRoleSQL = ' WHERE ';
-			if ($instructor != '') {
-				$sectionRoleSQL = ', sectionRole sr WHERE sr.sectionID = s.sectionID AND ';
-			}
+			$sectionRoleSQL = ', sectionRole sr WHERE sr.sectionID = s.sectionID AND ';
 			if (!$adminRequest) {
 				$semesterSQL = ', section s, reservesRecord r, itemHeading i ' . $sectionRoleSQL . ' s.courseID = c.courseID AND s.year = ? AND s.term = ? AND s.sectionID = i.sectionID AND i.itemHeadingID =  r.itemHeadingID';
 			}
@@ -54,9 +52,9 @@ class ReservesSearch {
 		/* first query to get the total number of records */
 		$sql = 'SELECT DISTINCT s.sectionID FROM course c';
 
-		$whereClause = self::buildMySQLWhereClause($fields, $keywords, $semesterSQL, $instructor, $db);
+		$whereClause = self::buildMySQLWhereClause($fields, $keywords, $semesterSQL, $db);
 		$sql .= $whereClause;
-
+		error_log($sql);
 		$returnStatement = $db->Execute($sql, $sqlParams);
 		$totalRecords = $returnStatement->RecordCount();
 
@@ -67,7 +65,6 @@ class ReservesSearch {
 			$limitClause = " LIMIT $offset, 25";
 			$sql .= $whereClause . $limitClause;
 
-			error_log($sql);
 			$returnStatement = $db->Execute($sql, $sqlParams);
 			if ($returnStatement->RecordCount() > 0) {
 				$matchedSections = array();
@@ -144,20 +141,19 @@ class ReservesSearch {
 	 * @param ADODBObject $db reference to our DB Object.
 	 * @return String the WHERE fragment.
 	 */
-	static function buildMySQLWhereClause($fields, $keywords, $semesterSQL, $instructor, &$db) {
+	static function buildMySQLWhereClause($fields, $keywords, $semesterSQL, &$db) {
 
 		$keywordArray = preg_replace("/$/", "*", preg_split("/\s+/", $keywords));
-		$match = "MATCH (" . join(',', $fields) . ") AGAINST (" . $db->qstr(join(" ", $keywordArray)) . " IN BOOLEAN MODE) ";
+		$match = " ( MATCH (" . join(',', $fields) . ") AGAINST (" . $db->qstr(join(" ", $keywordArray)) . " IN BOOLEAN MODE) ";
 
 		if ($semesterSQL == '') {
 			$returner =  "WHERE " . $match;
 		} else {
-			$returner = $semesterSQL . " AND " . $match;
+			$returner = $semesterSQL . "  AND " . $match;
 		}
 
-		if ($instructor != '') {
-			$returner .= ' AND CONCAT(sr.firstName, sr.lastName) LIKE ' . $db->qstr('%' . $instructor . '%') . ' ';
-		}
+//		$returner .= ' AND CONCAT(sr.firstName, sr.lastName) LIKE ' . $db->qstr('%' . $instructor . '%') . ' ';
+		$returner .= " OR MATCH(sr.userName, sr.firstName, sr.lastName) AGAINST (" . $db->qstr(join(" ", $keywordArray)) . " IN BOOLEAN MODE) )";
 
 		return $returner;
 	}

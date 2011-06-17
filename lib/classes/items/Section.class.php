@@ -113,7 +113,7 @@ class Section extends ElectronicReserveItem {
 		$currentYear = intval(date('Y'));
 		$fiveYearsPrior = $currentYear - 1;
 		$fiveYearsHence = $currentYear + 1;
-		$semesterTerms = array('WI', 'FA', 'IN', 'SP', 'SU');
+		$semesterTerms = array('FA', 'SU', 'IN', 'SP', 'WI');
 
 		$semesters = array();
 		$sql = $db->Prepare('SELECT count(r.reservesRecordID) AS reservesTotal FROM reservesRecord r, itemHeading i, section s WHERE
@@ -211,12 +211,11 @@ class Section extends ElectronicReserveItem {
 		if ($semester == '' && $all) {
 			$semester = self::getCurrentSemester();
 		}
-		$select = new Select( array('name' => 'semester', 'primaryLabel' => 'Course Semester', 'secondaryLabel' => 'Those with reserves are marked',
+		$select = new Select( array('name' => 'semester', 'primaryLabel' => 'Course Semester',
 				'requiredMsg' => 'Please choose a semester', 'value' => $semester, 'onChange' => 'switchSemesters()') );
 		$select->addOption( array('value' => '', 'label' => '------') );
 		foreach ($semesters as $semesterName => $semesterReservesCount) {
 			$label = $semesterName;
-			$label .= $semesterReservesCount > 0 ? " ($semesterReservesCount)" : "";
 			$select->addOption( array('value' => $semesterName, 'label' => $label) );
 		}
 

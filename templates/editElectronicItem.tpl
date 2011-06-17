@@ -10,7 +10,7 @@
 		<!--
 
 			var localFields = new Array('usagerights', 'restricttologin', 'restricttoenroll', 'uploadedfile');
-			var remoteFields = new Array('doi', 'url');
+			var remoteFields = new Array('doi', 'url', 'proxy');
 
 			function toggleFields() {
 				var chosenRadio = $("#fileChoice:checked").val();

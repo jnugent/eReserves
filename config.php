@@ -21,6 +21,10 @@ dbname = reserves
 
 localhost[] = 127.0.0.1
 
+[mobiledomains]
+ 
+domain[] = m.yoursite.com
+
 [ldap]
 
 ldap_host = "ldap://ldap.yourserver.com"
@@ -80,7 +84,10 @@ controller_url = "https://your.opac.server.com/uhtbin/reserves/index.cgi"
 controller_disable_ssl_verify = On ; or Off.  Leave On if you sign your own certificate and use SSL
 
 [bulk_reserves]
-default_heading_title = "Documents" ; you can set this to whatever you'd like the default ItemHeading title to be, for bulk reserve creates
+default_heading_title = "Readings" ; you can set this to whatever you'd like the default ItemHeading title to be, for bulk reserve creates
 
 [worldcat]
 wskey = YOURAPIKEY ; obviously, get this from OCLC for yourself.
+
+[proxy]
+prefix = "https://login.proxy.yoursite.com/login?url=" ; define the prefix to your proxy server, for off-campus access to electronic resources

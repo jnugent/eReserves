@@ -10,16 +10,16 @@ define("CRYPT_SECRET_KEY_MOBILE", "B1r5CRvIHxzHRf6LDQxPuvk46eEY5CyRgUwfgL8z7JjBs
 define("CRYPT_IV_MOBILE", "e4c9551a");
 
 /**
- * @brief mimics a java-like import function which automatically pulls in files ending in .class.php, and converts . to / to imitate packages
- * @param String $class like general.Something -> classes/general/Something.class.php
+ * @brief mimics a java-like import function which automatically pulls in files ending in .class.php, and converts . to / to imitate packages.
+ * @param String $class like general.Something -> classes/general/Something.class.php.
  */
 function import($class) {
 	require_once('classes/' . str_replace('.', '/', $class) .  '.class.php');
 }
 
 /**
- * @brief returns an ADODB database object
- * @return ADOConnection
+ * @brief returns an ADODB database object.
+ * @return ADOConnection our database object.
  */
 function getDB() {
 
@@ -33,9 +33,9 @@ function getDB() {
 
 /**
  * @brief performs an operation based on the page requested.
- * @param String $op the operation to perform
- * @param int $objectID the objectID representing the object the operation is to be performed on
- * @param ReservesUser $reservesUser the user currently registered with this session (could be anonymous)
+ * @param String $op the operation to perform.
+ * @param int $objectID the objectID representing the object the operation is to be performed on.
+ * @param ReservesUser $reservesUser the user currently registered with this session (could be anonymous).
  */
 function performOp($op, $objectID, &$reservesUser, $extraArgs = array()) {
 
@@ -69,23 +69,58 @@ function performOp($op, $objectID, &$reservesUser, $extraArgs = array()) {
 			ReservesRequest::doRedirect($op);
 		break;
 
+		case 'listCourseNumbers':
+
+			$terms = $extraArgs[0];
+			if (preg_match('/^\d+$/', $terms)) {
+				import('items.Course');
+				echo Course::getAllNumbers($terms);
+				exit(0);
+			}
+
+		break;
+
+		case 'listCoursePrefixes':
+
+			$terms = $extraArgs[0];
+			if (preg_match('/^[a-z]+$/i', $terms)) {
+				import('items.Course');
+				echo Course::getAllPrefixes($terms);
+				exit(0);
+			}
+
+		break;
+
 		case 'login':
 
 			// Form::isValidSubmission returns true, or an array of strings with the names of the missing fields
 			$validSubmission = Form::isValidSubmission();
 			if ($validSubmission) {
 				if ($reservesUser->logIn()) {
-					$currentURI = ReservesRequest::getRequestValue('currentURI');
-					if ($currentURI != '') {
-						ReservesRequest::doRedirect($currentURI);
-					} else {
-						ReservesRequest::showHomePage();
+
+					if (isset($_SESSION['loginError'])) {
+						unset($_SESSION['loginError']);
+					}
+					// check to see if this was a redirection to a stream for a file download
+					if (isset($_SESSION['streamURL'])) {
+						import('general.ReservesRequest');
+						$url = $_SESSION['streamURL'];
+						unset($_SESSION['streamURL']); // clear it just so future redirects work, if the user stays on the Reserves site.
+						ReservesRequest::doRedirect($url);
+						exit();
 					}
 				} else {
-					ReservesRequest::doRedirect('loginError');
+					$_SESSION['loginError'] = true;
 				}
 			} else {
-				ReservesRequest::doRedirect('loginError');
+				$_SESSION['loginError'] = true;
+			}
+
+			$currentURI = ReservesRequest::getRequestValue('currentURI');
+			if ($currentURI != '') {
+				ReservesRequest::doRedirect($currentURI);
+			} else {
+				ReservesRequest::showHomePage();
 			}
 		break;
 
@@ -148,7 +183,9 @@ function performOp($op, $objectID, &$reservesUser, $extraArgs = array()) {
 				}
 
 				$return = $reservesRecord->update();
-				if ($return != RESERVE_RECORD_ITEM_BULK_CREATE_SUCCESS) {
+				if ($return == RESERVE_RECORD_ITEM_SINGLE_CREATE_SUCCESS) {
+					ReservesRequest::doRedirect('createReservesItem/'  . $reservesRecord->getReservesRecordID() . '/0');
+				} else if ($return != RESERVE_RECORD_ITEM_BULK_CREATE_SUCCESS) {
 					return true;
 				} else {
 					ReservesRequest::doRedirect('createReservesItem/0/0');
@@ -175,6 +212,8 @@ function performOp($op, $objectID, &$reservesUser, $extraArgs = array()) {
 				}
 
 				$reserveItem->update();
+				$reservesRecord = new ReservesRecord(ReservesRequest::getRequestValue('reservesrecordid'));
+				ReservesRequest::doRedirect('viewReserves/' . $reservesRecord->getSectionID());
 				return true;
 			}
 		break;
@@ -240,6 +279,7 @@ function performOp($op, $objectID, &$reservesUser, $extraArgs = array()) {
 				if ($emailid != '') {
 				import('auth.LDAPConnection');
 				import('items.Section');
+				import('items.PhysicalReserveItem');
 					$emailid = trim(decryptStringMobile($emailid));
 					$ldapInfo = LDAPConnection::getSectionsFromLDAPRecord($emailid);
 					$sectionCodes = $ldapInfo[0];
@@ -251,10 +291,13 @@ function performOp($op, $objectID, &$reservesUser, $extraArgs = array()) {
 								$reserves = $section->getReserves();
 								foreach ($reserves as $reserve) {
 									foreach ($reserve->getPhysicalItems() as $p) {
-										$items[ $p->getTitle() ] = $p->getBarcode();
+										$opacRecord = json_decode(accessOPACRecord(PhysicalReserveItem::PHYSICAL_RESERVE_ITEM_QUERY, array('barCode' => $p->getBarCode())));
+
+										$items[ $p->getDateTimestamp() ] = array($opacRecord->title, $opacRecord->callNumber, $opacRecord->checkedOut,
+																				 $opacRecord->dueBack, $opacRecord->location, $opacRecord->library, $opacRecord->permLoc);
 									}
 									foreach($reserve->getElectronicItems() as $e) {
-										$items[ $e->getTitle() ] = $e->getURL();
+										$items[ $e->getDateTimestamp() ] = array($e->getTitle(), $e->getURL());
 									}
 								}
 								$sections[ $code ] = array('section' => Section::getSectionFromCalendarCode($code), 'reserveItems' => $items);
@@ -266,7 +309,6 @@ function performOp($op, $objectID, &$reservesUser, $extraArgs = array()) {
 					}
 				}
 			}
-
 		break;
 
 		case 'searchByUser':
@@ -291,7 +333,6 @@ function performOp($op, $objectID, &$reservesUser, $extraArgs = array()) {
 					$validEntries = LDAPConnection::getUserIDsFromCNSearch(ReservesRequest::getRequestValue('nameterms'));
 					return array('0' => $validEntries);
 				}
-//				return array($sections, $commonName, ReservesRequest::getRequestValue('emailid'));
 			}
 		break;
 
@@ -314,7 +355,7 @@ function performOp($op, $objectID, &$reservesUser, $extraArgs = array()) {
 				$keywords = ReservesRequest::getRequestValue('keywords') != '' ? ReservesRequest::getRequestValue('keywords') : $extraArgs[1];
 				$semesterLimit = ReservesRequest::getRequestValue('semester') != '' ? ReservesRequest::getRequestValue('semester') : $extraArgs[2];
 				$pageOffset = intval($extraArgs[0]) > 0 ? intval($extraArgs[0]) : 0;
-				$reservesSections = ReservesSearch::searchSections($keywords, $semesterLimit, $pageOffset);
+				$reservesSections = ReservesSearch::searchSections($reservesUser, $keywords, $semesterLimit, $pageOffset);
 				return $reservesSections;
 			}
 		break;
@@ -333,8 +374,13 @@ function performOp($op, $objectID, &$reservesUser, $extraArgs = array()) {
 		case 'viewCourses':
 
 			$pageOffset = intval($extraArgs[0]) > 0 ? intval($extraArgs[0]) : 0;
-			$reserveCourses = $reservesUser->getCourseSections($pageOffset);
-			return $reserveCourses;
+			if (isset($extraArgs[1])) {
+				list ($courseNameFilter, $courseCodeFilter) = preg_split("/\|/", $extraArgs[1]);
+			}
+
+			$filters = array('courseNameFilter' => $courseNameFilter, 'courseCodeFilter' => $courseCodeFilter);
+			$courseSections = $reservesUser->getCourseSections($pageOffset, $filters);
+			return $courseSections;
 		break;
 
 		case 'browseCourses':
@@ -355,11 +401,14 @@ function performOp($op, $objectID, &$reservesUser, $extraArgs = array()) {
 				if ( !$item->isRestricted() || $reservesUser->isAdmin() || ($reservesUser->isLoggedIn() && !$item->requiresEnrolment())
 					|| ($item->getReservesRecord()->getSection()->userIsEnrolled($reservesUser->getUserName())) ) {
 					header('Content-Type: ' . $mimeType);
-//					header('Content-Disposition: attachment; filename="' . urlencode($originalFileName) . '"');
-//					header('Content-Length: ' . filesize($url));
+					// these next two headers were commented out.  re-enabled for testing.
+					header('Content-Disposition: attachment; filename="' . urlencode($originalFileName) . '"');
+					header('Content-Length: ' . filesize($url));
 					echo file_get_contents($url);
 				} else {
-					ReservesRequest::doRedirect('securityException');
+					import('general.ReservesRequest');
+					$_SESSION['streamURL'] = ReservesRequest::getRequestURI();
+					ReservesRequest::doRedirect('loginError');
 				}
 			}
 		break;
@@ -370,7 +419,6 @@ function performOp($op, $objectID, &$reservesUser, $extraArgs = array()) {
 				import('items.PhysicalReserveItem');
 				$item = new PhysicalReserveItem($objectID);
 				$barCode = $item->getBarcode();
-
 				if (ctype_digit($barCode)) { // this is a sanity check
 					$content = accessOPACRecord(PhysicalReserveItem::PHYSICAL_RESERVE_ITEM_QUERY, array('barCode' => $item->getBarCode()));
 					/* the opacProxy only ever gets used when a user views the catalogue record on the reserves site.  So, we're only ever
@@ -385,7 +433,7 @@ function performOp($op, $objectID, &$reservesUser, $extraArgs = array()) {
 			}
 		break;
 
-		case 'assignInstructors':
+		case 'assignPeople':
 
 			$validSubmission = Form::isValidSubmission();
 			import('items.Section');
@@ -407,8 +455,10 @@ function performOp($op, $objectID, &$reservesUser, $extraArgs = array()) {
 			if (preg_match('{[a-z0-9]+}', $userTerms)) {
 				import('auth.LDAPConnection');
 				$entriesFound = LDAPConnection::getUserIDsFromUIDSearch($userTerms);
-				foreach ($entriesFound as $uid => $name) {
-					echo $uid . '|' . $name . "\n";
+				if (is_array($entriesFound)) {
+					foreach ($entriesFound as $uid => $name) {
+						echo $uid . '|' . $name . "\n";
+					}
 				}
 			}
 		break;
@@ -418,9 +468,9 @@ function performOp($op, $objectID, &$reservesUser, $extraArgs = array()) {
 }
 
 /*
- *  @brief decrypts a string that had been encryted with mcrypt()
- *  @param String the string to decrypt
- *  @return @String the plaintext string
+ *  @brief decrypts a string that had been encryted with mcrypt().
+ *  @param String the string to decrypt.
+ *  @return @String the plaintext string.
  */
 function decryptString($string) {
 
@@ -432,8 +482,8 @@ function decryptString($string) {
 
 /*
  *  @brief decrypts a string that had been encryted with mcrypt(), from the mobile site.
- *  @param String the string to decrypt
- *  @return @String the plaintext string
+ *  @param String the string to decrypt.
+ *  @return @String the plaintext string.
  */
 function decryptStringMobile($string) {
 
@@ -445,9 +495,9 @@ function decryptStringMobile($string) {
 }
 
 /*
- * @brief encrypts a string with mcrypt()
- * @param String the string to encrypt
- * @return @String the mcrypted string
+ * @brief encrypts a string with mcrypt().
+ * @param String the string to encrypt.
+ * @return @String the mcrypted string.
  */
 function encryptString($string) {
 
@@ -460,8 +510,8 @@ function encryptString($string) {
 /**
  * @brief examines the arguments passed into the op to determine if a new item is being created.  This
  * is usually the case when the first argument in the array is zero (a new record).
- * @param Array $extraArgs
- * @return boolean true or false
+ * @param Array $extraArgs.
+ * @return boolean true or false.
  */
 function isCreationAttempt($extraArgs) {
 	if ($extraArgs[0] == 0) {
@@ -474,8 +524,8 @@ function isCreationAttempt($extraArgs) {
 /**
  * @brief moves an uploaded file to the assetstore directory, creating a unique file name in the process.  The
  * path to the uploaded file is returned.
- * @param String $uploadedFile the path to the uploaded file
- * @return String the path to the moved file
+ * @param String $uploadedFile the path to the uploaded file.
+ * @return String the path to the moved file.
  */
 function moveUploadedAsset($uploadedFile) {
 
@@ -510,11 +560,11 @@ function moveUploadedAsset($uploadedFile) {
 /**
  * @brief connects to the library OPAC and performs a command on a reserves record.  $cmd can be one of
  * several predefined constants in PhysicalReserveItem - create, query, edit, and delete.
- * this method assembles the record details into a JSON string and sends it to the defined CGI script in the config.inc.php file
+ * this method assembles the record details into a JSON string and sends it to the defined CGI script in the config.inc.php file.
  *
- * @param integer $cmd a predefined constant for what command to perform
- * @param mixed array $recordDetails the fields for the reserve record
- * @return boolean success or failure
+ * @param integer $cmd a predefined constant for what command to perform.
+ * @param mixed array $recordDetails the fields for the reserve record.
+ * @return Mixed the result of the curl request, or false.
  */
 function accessOPACRecord($cmd, $recordDetails = array()) {
 	import ('general.Config');
@@ -528,7 +578,6 @@ function accessOPACRecord($cmd, $recordDetails = array()) {
 		if ($config->getSetting('catalogue', 'controller_disable_ssl_verify')) {
 			$curlObject->disableSSLCheck();
 		}
-
 		$json_string = json_encode($recordDetails);
 		$result = $curlObject->doPost(array('cmd' => $cmd, 'json' => $json_string));
 		return $result;
@@ -557,6 +606,7 @@ function getQuickSearchAJAX($basePath) {
 					if (section != "") {
 						url += "/" + section;
 					}
+
 					if (keywords != "") {
 						document.location = url;
 					}
@@ -566,7 +616,6 @@ function getQuickSearchAJAX($basePath) {
 		});
 
 	</script>';
-
 	return $quickSearchAJAX;
 }
 ?>

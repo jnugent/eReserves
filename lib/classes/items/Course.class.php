@@ -154,7 +154,7 @@ class Course extends ElectronicReserveItem {
 	function getSections() {
 
 		$db = getDB();
-		$sql = "SELECT s.sectionID FROM section s WHERE s.courseID = ?";
+		$sql = "SELECT s.sectionID FROM section s WHERE s.courseID = ? ORDER BY year DESC, sectionID DESC";
 		$returnStatement = $db->Execute($sql, array($this->getCourseID()));
 
 		import('items.Section');

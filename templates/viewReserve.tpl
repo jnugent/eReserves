@@ -137,9 +137,6 @@
 						<td><a href="{{ basePath }}/index.php/editPhysicalItem/{{ item.getPhysicalItemID }}">Edit</a> | <a onClick="showModal('{{ basePath }}/index.php/deletePhysicalItem/{{ item.getPhysicalItemID }}')" href="#">Delete</a></td>
 					{% endif %}
 				</tr>
-				<tr>
-					<td colspan="{%if canAdmin %}4{% else %}3{% endif %}">{{ item.getCitation }}</td>
-				</tr>
 				{% endif %}
 			{% endfor %}
 		</table>

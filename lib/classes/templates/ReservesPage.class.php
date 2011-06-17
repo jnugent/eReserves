@@ -54,7 +54,7 @@ class ReservesPage {
 		$form = new Form(array('id' => 'login', 'method' => 'post', 'action' => $this->basePath . '/index.php/login'));
 		$fieldSet = new FieldSet(array('legend' => 'Login'));
 		$fieldSet->addField( new HiddenField( array('name' => 'currentURI', 'value' => ReservesRequest::getRequestURI() ) ) );
-		$fieldSet->addField(new TextField( array('name' => 'username','primaryLabel' => 'UNB Email ID', 'secondaryLabel' => '', 'required' => true,
+		$fieldSet->addField(new TextField( array('name' => 'username','primaryLabel' => 'Login ID', 'secondaryLabel' => '', 'required' => true,
 				'requiredMsg' => 'Please enter a UNB user ID')) );
 		$fieldSet->addField(new Password());
 		$fieldSet->addField(new Button( array('type' => 'submit', 'label' => 'Login')) );
@@ -88,7 +88,7 @@ class ReservesPage {
 			<script src="/core/js/jquery.validate.js" type="text/javascript"></script>
 			<script src="/core/js/jquery.tablednd_0_5.js" type="text/javascript"></script>
 		</head>
-		<body class="twoCol lite reserves">';
+		<body class="twoCol lite reserves" onLoad="focusTextField()">';
 
 		include_once ("/www/core/inc/headnav.php");
 
@@ -115,9 +115,11 @@ class ReservesPage {
 		echo '
 			<script type="text/javascript">
 				<!--
-					var inputs = $(":text:visible");
-					if (inputs.length > 0) {
-					  inputs[0].focus();
+					function focusTextField() {
+						var inputs = $(":text:visible");
+						if (inputs.length > 0) {
+							inputs[0].focus();
+						}
 					}
 				// -->
 			</script>';
@@ -172,7 +174,6 @@ class ReservesPage {
 
 				$templateState['keywords'] = $extraArgs[1] != '' ? $extraArgs[1] : ReservesRequest::getRequestValue('keywords');
 				$templateState['semester'] = $extraArgs[2] != '' ? $extraArgs[2] : ReservesRequest::getRequestValue('semester');
-				$templateState['instructor'] = $extraArgs[3] != '' ? $extraArgs[3] : ReservesRequest::getRequestValue('instructor');
 
 				// NOTE this case falls through to get the search form that is present on the default index page.
 
@@ -189,12 +190,10 @@ class ReservesPage {
 				$fieldSet = new FieldSet(array('legend' => 'Reserves Quick Search'));
 
 				$keywords = ReservesRequest::getRequestValue('keywords') != '' ? htmlspecialchars(ReservesRequest::getRequestValue('keywords')) : $extraArgs[1];
-				$instructor = ReservesRequest::getRequestValue('instructor') != '' ? htmlspecialchars(ReservesRequest::getRequestValue('instructor')) : $extraArgs[3];
 
 				$fieldSet->addField(new TextField( array('name' => 'keywords', 'primaryLabel' => 'Search', 'secondaryLabel' => 'Enter some keywords to search for', 'required' => true,
 							'requiredMsg' => 'Please enter some keywords', 'value' => $keywords)));
-				$fieldSet->addField(new TextField( array('name' => 'instructor', 'primaryLabel' => 'Instructor', 'secondaryLabel' => 'Optionally, add your instructor\'s name',
-							 'value' => $instructor)));
+
 				import('items.Section');
 				$fieldSet->addField(Section::getSemesterDropdown(TRUE, $templateState['semester']));
 				$fieldSet->addField(new Button( array('type' => 'submit', 'label' => 'Submit')) );

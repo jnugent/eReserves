@@ -14,7 +14,7 @@ class PhysicalReserveItem extends ReserveItem {
 
 		if ($physicalItemID > 0) {
 			$db = getDB();
-			$sql = "SELECT p.physicalItemID, p.barCode, p.reservesRecordID, p.citation, p.shadow, p.dateAdded FROM physicalItem p WHERE p.physicalItemID = ?";
+			$sql = "SELECT p.physicalItemID, p.barCode, p.reservesRecordID, p.shadow, p.dateAdded FROM physicalItem p WHERE p.physicalItemID = ?";
 			$returnStatement = $db->Execute($sql, array($physicalItemID));
 			if ($returnStatement->RecordCount() ==  1) {
 				$recordRow = $returnStatement->GetRowAssoc(FALSE);
@@ -60,15 +60,6 @@ class PhysicalReserveItem extends ReserveItem {
 	 */
 	function getPhysicalItemID() {
 		$returner = $this->getAttribute('physicalitemid');
-		return $returner;
-	}
-
-	/**
-	 * @brief fetches the citation for this record.
-	 * @return String the citation.
-	 */
-	function getCitation() {
-		$returner = $this->getAttribute('citation');
 		return $returner;
 	}
 
@@ -125,7 +116,6 @@ class PhysicalReserveItem extends ReserveItem {
 		import('general.ReservesRequest');
 
 		$barcode = ReservesRequest::getRequestValue('barcode');
-		$citation = ReservesRequest::getRequestValue('citation');
 		$physicalitemid = ReservesRequest::getRequestValue('physicalitemid');
 		$reservesrecordid = ReservesRequest::getRequestValue('reservesrecordid');
 		$shadow = ReservesRequest::getRequestValue('shadow') != '' ? '1' : '0';
@@ -141,13 +131,13 @@ class PhysicalReserveItem extends ReserveItem {
 		$physicalItemIDs = array();
 
 		foreach ($reservesrecordids as $reservesrecordid) {
-			$sqlParams = array($callnumber, $barcode, $usagerights, $location, $citation, $loanperiod, $shadow, $reservesrecordid, $physicalitemid);
+			$sqlParams = array($barcode, $shadow, $reservesrecordid, $physicalitemid);
 
 			if ($physicalitemid > 0) {
-				$sql = "UPDATE physicalItem SET barCode = ?, citation = ?, shadow = ?, reservesRecordID = ?, dateAdded = now() WHERE physicalItemID = ?";
+				$sql = "UPDATE physicalItem SET barCode = ?, shadow = ?, reservesRecordID = ?, dateAdded = now() WHERE physicalItemID = ?";
 			} else {
-				$sql = "INSERT INTO physicalItem (barCode, citation, shadow, reservesRecordID, physicalItemID, dateAdded)
-						VALUES (?, ?, ?, ?, ?, now())";
+				$sql = "INSERT INTO physicalItem (barCode, shadow, reservesRecordID, physicalItemID, dateAdded)
+						VALUES (?, ?, ?, ?, now())";
 			}
 			$returnStatement = $db->Execute($sql, $sqlParams);
 			if ($returnStatement) {
@@ -221,8 +211,8 @@ class PhysicalReserveItem extends ReserveItem {
 //		$fieldSet->addField(new TextField( array('required' => true, 'primaryLabel' => 'Loan Period', 'secondaryLabel' => 'Length of Time', 'name' => 'loanperiod',
 //							'value' => $this->getAttribute('loanperiod'), 'requiredMsg' => 'Please enter a loan period') ));
 
-		$fieldSet->addField(new TextArea( array('required' => true, 'primaryLabel' => 'Citation', 'secondaryLabel' => '', 'name' => 'citation',
-							'value' => $this->getAttribute('citation'), 'requiredMsg' => 'Please enter a citation') ));
+//		$fieldSet->addField(new TextArea( array('required' => true, 'primaryLabel' => 'Citation', 'secondaryLabel' => '', 'name' => 'citation',
+//							'value' => $this->getAttribute('citation'), 'requiredMsg' => 'Please enter a citation') ));
 
 		$fieldSet->addField(new Checkbox( array('name' => 'shadow', 'primaryLabel' => 'Shadow this item?', 'secondaryLabel' => '' ,'value' => $this->getAttribute('shadow')) ) );
 
