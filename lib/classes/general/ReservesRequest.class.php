@@ -185,6 +185,10 @@ class ReservesRequest {
 
 		return $mimeType;
 	}
+
+	static function getQueryString() {
+		return (isset($_SERVER['QUERY_STRING'])) ? $_SERVER['QUERY_STRING'] : '';
+	}
 }
 
 ?>

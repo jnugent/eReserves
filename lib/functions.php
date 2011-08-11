@@ -48,7 +48,6 @@ function performOp($op, $objectID, &$reservesUser, $extraArgs = array()) {
 		break;
 
 		case 'assumeUserRole':
-
 			if ($extraArgs[0] != '') {
 
 				import('general.ReservesRequest');
@@ -66,6 +65,12 @@ function performOp($op, $objectID, &$reservesUser, $extraArgs = array()) {
 				unset($_SESSION['assumedUserInfo']); // if the page is called with no argument, destroy the array and turn it off
 				$op = ReservesRequest::getReferringPage();
 			}
+			ReservesRequest::doRedirect($op);
+		break;
+
+		case 'switchToStudent':
+			$_SESSION['assumedUserInfo'] = array('uid' => 'Reserves Student View', 'cn' => 'Reserves Student View', 'accountType' => 'unbCaStudent');
+			$op = ReservesRequest::getReferringPage();
 			ReservesRequest::doRedirect($op);
 		break;
 
@@ -96,17 +101,21 @@ function performOp($op, $objectID, &$reservesUser, $extraArgs = array()) {
 			// Form::isValidSubmission returns true, or an array of strings with the names of the missing fields
 			$validSubmission = Form::isValidSubmission();
 			if ($validSubmission) {
+
+				$streamURL = '';
+
+				if (isset($_SESSION['streamURL'])) {
+					$streamURL = $_SESSION['streamURL'];
+				}
 				if ($reservesUser->logIn()) {
 
 					if (isset($_SESSION['loginError'])) {
 						unset($_SESSION['loginError']);
 					}
 					// check to see if this was a redirection to a stream for a file download
-					if (isset($_SESSION['streamURL'])) {
-						import('general.ReservesRequest');
-						$url = $_SESSION['streamURL'];
+					if ($streamURL != '') {
 						unset($_SESSION['streamURL']); // clear it just so future redirects work, if the user stays on the Reserves site.
-						ReservesRequest::doRedirect($url);
+						ReservesRequest::doRedirect($streamURL);
 						exit();
 					}
 				} else {
@@ -211,9 +220,19 @@ function performOp($op, $objectID, &$reservesUser, $extraArgs = array()) {
 					$reserveItem = new $class ();
 				}
 
-				$reserveItem->update();
-				$reservesRecord = new ReservesRecord(ReservesRequest::getRequestValue('reservesrecordid'));
-				ReservesRequest::doRedirect('viewReserves/' . $reservesRecord->getSectionID());
+				$reservesRecordIDs = $reserveItem->update();
+				// in most cases, we will just have one ID returned, unless it was some sort of bulk add.
+				$reservesRecordID = $reservesRecordIDs[0];
+				$reservesRecord = new ReservesRecord($reservesRecordID);
+				if (sizeof($reservesRecordIDs) == 1) {
+					ReservesRequest::doRedirect('viewReserves/' . $reservesRecord->getSectionID());
+				} else {
+					import('items.Section');
+					$section = new Section($reservesRecord->getSectionID());
+
+					ReservesRequest::doRedirect('viewSections/' . $section->getCourseID());
+				}
+
 				return true;
 			}
 		break;
@@ -277,13 +296,21 @@ function performOp($op, $objectID, &$reservesUser, $extraArgs = array()) {
 			if (ReservesRequest::isLocalHost()) {
 				$emailid = ReservesRequest::getRequestValue('emailid');
 				if ($emailid != '') {
-				import('auth.LDAPConnection');
-				import('items.Section');
-				import('items.PhysicalReserveItem');
+					import('auth.LDAPConnection');
+					import('items.Section');
+					import('items.PhysicalReserveItem');
 					$emailid = trim(decryptStringMobile($emailid));
 					$ldapInfo = LDAPConnection::getSectionsFromLDAPRecord($emailid);
 					$sectionCodes = $ldapInfo[0];
+					$sectionCodesFromAssignedRoles = ReservesUser::getAssignedCourseSectionsByUser($emailid);
 					if (is_array($sectionCodes)) {
+						$sectionCodes = array_merge($sectionCodesFromAssignedRoles, $sectionCodes);
+					} else {
+						$sectionCodes = $sectionCodesFromAssignedRoles;
+					}
+					if (is_array($sectionCodes)) {
+						$sections = array();
+
 						foreach ($sectionCodes as $code) {
 							$section = Section::getSectionFromCalendarCode($code);
 							if ($section->getTotalNumberOfReserves() > 0) {
@@ -321,6 +348,12 @@ function performOp($op, $objectID, &$reservesUser, $extraArgs = array()) {
 					$emailid = ReservesRequest::getRequestValue('emailid') != '' ? ReservesRequest::getRequestValue('emailid') : $extraArgs[0];
 					$ldapInfo = LDAPConnection::getSectionsFromLDAPRecord($emailid);
 					$sectionCodes = $ldapInfo[0];
+					$sectionCodesFromAssignedRoles = ReservesUser::getAssignedCourseSectionsByUser($emailid);
+					if (is_array($sectionCodes)) {
+						$sectionCodes = array_merge($sectionCodesFromAssignedRoles, $sectionCodes);
+					} else {
+						$sectionCodes = $sectionCodesFromAssignedRoles;
+					}
 					$commonName = $ldapInfo[1];
 					$sections = array();
 					if (is_array($sectionCodes)) {
@@ -347,16 +380,57 @@ function performOp($op, $objectID, &$reservesUser, $extraArgs = array()) {
 
 		break;
 
+		case 'quickSearchJSON':
 		case 'quickSearch':
 
 			$validSubmission = Form::isValidSubmission();
 			if ($validSubmission || $extraArgs[1] != '') {
 				import('search.ReservesSearch');
 				$keywords = ReservesRequest::getRequestValue('keywords') != '' ? ReservesRequest::getRequestValue('keywords') : $extraArgs[1];
+
+				// attempt to normalize searches for things like MATH1000 or MATH*1000 into MATH 1000.
+				if (preg_match("{^\w+\d+$}", $keywords) || preg_match("{^\w+\*\d+$}", $keywords)) {
+					$keywords = preg_replace("{\*?(\d+)$}", " $1", $keywords);
+				}
+
 				$semesterLimit = ReservesRequest::getRequestValue('semester') != '' ? ReservesRequest::getRequestValue('semester') : $extraArgs[2];
 				$pageOffset = intval($extraArgs[0]) > 0 ? intval($extraArgs[0]) : 0;
 				$reservesSections = ReservesSearch::searchSections($reservesUser, $keywords, $semesterLimit, $pageOffset);
-				return $reservesSections;
+				if ($op == 'quickSearch') {
+					return $reservesSections;
+				} else {
+					$jsonResult = array();
+					$jsonResult['total'] = $reservesSections[1];
+					foreach ($reservesSections[0] as $section) {
+						$jsonResult[$section->getCalendarCourseCode()] = array('id' => $section->getSectionID(), 'code' => $section->getShortCourseCode(), 'section' => $section->getSectionNumber(), 'name' => $section->getCourseName(), 'instructor' => $section->getInstructors());
+					}
+
+					print json_encode($jsonResult);
+					exit();
+				}
+			}
+		break;
+
+		case 'viewReservesJSON':
+			if ($objectID > 0) {
+				import('items.Section');
+				$section = new Section($objectID);
+				$items = array();
+
+				$reserves = $reserves = $section->getReserves();
+				foreach ($reserves as $reserve) {
+					foreach ($reserve->getPhysicalItems() as $p) {
+						$opacRecord = json_decode(accessOPACRecord(PhysicalReserveItem::PHYSICAL_RESERVE_ITEM_QUERY, array('barCode' => $p->getBarCode())));
+
+						$items[ $p->getDateTimestamp() ] = array($opacRecord->title, $opacRecord->callNumber, $opacRecord->checkedOut,
+						$opacRecord->dueBack, $opacRecord->location, $opacRecord->library, $opacRecord->permLoc);
+					}
+					foreach($reserve->getElectronicItems() as $e) {
+						$items[ $e->getDateTimestamp() ] = array($e->getTitle(), $e->getURL());
+					}
+				}
+
+				print json_encode($items);
 			}
 		break;
 
@@ -394,12 +468,32 @@ function performOp($op, $objectID, &$reservesUser, $extraArgs = array()) {
 
 			if ($objectID > 0) {
 				import('items.ElectronicReserveItem');
+				import('items.ReservesRecord');
+				import('items.Section');
 				$item = new ElectronicReserveItem($objectID);
 				$url = $item->getAttribute('url');
 				$mimeType = $item->getAttribute('mimeType');
 				$originalFileName = $item->getAttribute('originalFileName');
-				if ( !$item->isRestricted() || $reservesUser->isAdmin() || ($reservesUser->isLoggedIn() && !$item->requiresEnrolment())
-					|| ($item->getReservesRecord()->getSection()->userIsEnrolled($reservesUser->getUserName())) ) {
+
+				$reservesRecord = new ReservesRecord($item->getAttribute('reservesrecordid'));
+
+				/* we also do a check to see if there is a QUERY_STRING containing an encrypted userid from a mobile login. */
+				$queryString = ReservesRequest::getQueryString();
+				$mobileAuth = false;
+				if ($queryString != '') {
+					$mobileUser = decryptStringMobile(urldecode($queryString));
+					if (preg_match("{^[a-z0-9]+$}", $mobileUser)) {
+						$sections = getMergedSectionRecords($mobileUser);
+						$section = $reservesRecord->getSection();
+
+						if (in_array($section->getCalendarCourseCode(), $sections)) {
+							$mobileAuth = true;
+						}
+					}
+				}
+
+				if ( $mobileAuth || $reservesUser->isAdmin() || ($reservesUser->isLoggedIn() && !$item->requiresEnrolment() && $item->isOpenAccess())
+					|| ($reservesRecord->getSection()->userIsEnrolled($reservesUser->getUserName())) ) {
 					header('Content-Type: ' . $mimeType);
 					// these next two headers were commented out.  re-enabled for testing.
 					header('Content-Disposition: attachment; filename="' . urlencode($originalFileName) . '"');
@@ -408,7 +502,8 @@ function performOp($op, $objectID, &$reservesUser, $extraArgs = array()) {
 				} else {
 					import('general.ReservesRequest');
 					$_SESSION['streamURL'] = ReservesRequest::getRequestURI();
-					ReservesRequest::doRedirect('loginError');
+					$_SESSION['loginError'] = true;
+					ReservesRequest::doRedirect('downloadLogin');
 				}
 			}
 		break;
@@ -438,7 +533,7 @@ function performOp($op, $objectID, &$reservesUser, $extraArgs = array()) {
 			$validSubmission = Form::isValidSubmission();
 			import('items.Section');
 
-			if (preg_match('{[a-z0-9]+}', $extraArgs[0])) {
+			if (preg_match('{^[a-z0-9]+$}', $extraArgs[0])) {
 				$section = new Section($objectID);
 				return $section->removeSectionRoleForUserID($extraArgs[0]);
 			}
@@ -452,7 +547,7 @@ function performOp($op, $objectID, &$reservesUser, $extraArgs = array()) {
 
 			/* this is the AJAX bit for populating the drop down based on a query against LDAP.  ITS is going to kill me. */
 			$userTerms = $extraArgs[1];
-			if (preg_match('{[a-z0-9]+}', $userTerms)) {
+			if (preg_match('{^[a-z0-9]+$}', $userTerms)) {
 				import('auth.LDAPConnection');
 				$entriesFound = LDAPConnection::getUserIDsFromUIDSearch($userTerms);
 				if (is_array($entriesFound)) {
@@ -617,5 +712,22 @@ function getQuickSearchAJAX($basePath) {
 
 	</script>';
 	return $quickSearchAJAX;
+}
+
+function getMergedSectionRecords($emailid) {
+
+	import('auth.LDAPConnection');
+	import('auth.ReservesUser');
+
+	$ldapInfo = LDAPConnection::getSectionsFromLDAPRecord($emailid);
+	$sectionCodes = $ldapInfo[0];
+	$sectionCodesFromAssignedRoles = ReservesUser::getAssignedCourseSectionsByUser($emailid);
+	if (is_array($sectionCodes)) {
+		$sectionCodes = array_merge($sectionCodesFromAssignedRoles, $sectionCodes);
+	} else {
+		$sectionCodes = $sectionCodesFromAssignedRoles;
+	}
+
+	return $sectionCodes;
 }
 ?>

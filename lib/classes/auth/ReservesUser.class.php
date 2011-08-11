@@ -47,9 +47,11 @@ class ReservesUser {
 
 	/**
 	 * @brief starts a session and persists the LDAP field items in the SESSION array.
-	 * @param unknown_type $ldapEntry
+	 * @param Array $ldapEntry
+	 * @param String $username the user's username entered on the login form.  we use this to compare if the uid LDAP field has both student
+	 * and staff IDs.
 	 */
-	private function _createNewSession($ldapEntry) {
+	private function _createNewSession($ldapEntry, $username) {
 		import('general.Config');
 		import('general.ReservesRequest');
 		$config = new Config();
@@ -58,7 +60,7 @@ class ReservesUser {
 			session_set_cookie_params($sessionLifetime);
 		}
 		session_start();
-		$localUserSettings = $this->_verifyLocalDatabaseRecord($ldapEntry['uid'][0], $ldapEntry['mail'][0]);
+		$localUserSettings = $this->_verifyLocalDatabaseRecord($username, $ldapEntry['mail'][0]);
 
 		$accountTypeField = $config->getSetting('ldap', 'account_type_field');
 
@@ -230,6 +232,20 @@ class ReservesUser {
 		}
 	}
 
+	public static function getAssignedCourseSectionsByUser($userName) {
+
+		$db = getDB();
+		$sql = 'SELECT sr.sectionID from sectionRole as sr WHERE sr.userName = ? AND sr.roleID = ?';
+		$returnStatement = $db->Execute($sql, array($userName, self::ROLE_SECTION_SPECIAL_ENROL));
+		$sectionCodes = array();
+		import('items.Section');
+		while ($returnObject = $returnStatement->FetchNextObject()) {
+			$section = new Section($returnObject->SECTIONID);
+			$sectionCodes[] = $section->getCalendarCourseCode();
+		}
+
+		return $sectionCodes;
+	}
 	/**
 	 * @brief simple way to get all of the roles possible for a section user
 	 */
@@ -376,7 +392,7 @@ class ReservesUser {
 	 */
 	public function logIn() {
 		import('general.ReservesRequest');
-		$username = ReservesRequest::getRequestValue('username');
+		$username = strtolower(ReservesRequest::getRequestValue('username'));
 		$password = ReservesRequest::getRequestValue('password');
 
 		if (preg_match("/^(\w+)$/", $username, $matches)) {
@@ -389,7 +405,7 @@ class ReservesUser {
 
 			if ($entry) {
 				$this->_destroySession($entry);
-				$this->_createNewSession($entry);
+				$this->_createNewSession($entry, $username);
 				return true;
 			}
 		}
@@ -412,7 +428,7 @@ class ReservesUser {
 	 */
 	public function canPerformOp($op, $objectID) {
 
-		$anonymousOps	 = array('browseCourses', 'login', 'logout', 'loginError', 'opacProxy', 'quickSearch', 'searchByUserJSON', 'stream', 'viewReserves', 'viewReserve', 'viewAllReserves');
+		$anonymousOps	 = array('browseCourses', 'downloadLogin', 'login', 'logout', 'loginError', 'opacProxy', 'quickSearch', 'quickSearchJSON', 'searchByUserJSON', 'stream', 'viewReserves', 'viewReservesJSON', 'viewReserve', 'viewAllReserves');
 		$authenticatedOps = array('listCourseNumbers', 'listCoursePrefixes', 'viewCourses', 'viewSections');
 
 		if ($op == '' || in_array($op, $anonymousOps) ) {
@@ -483,7 +499,7 @@ class ReservesUser {
 					break;
 
 				case 'assumeUserRole':
-
+				case 'switchToStudent':
 					if ($this->isActing() || $this->isAdmin()) {
 						return true;
 					} else {
@@ -511,7 +527,9 @@ class ReservesUser {
 	 * @brief returns an array of Course objects that the user currently has available.  Filters on the basis of administration privileges,
 	 * whether the user is an instructor, or an adminstrator of the course.   This administrator privilege is NOT the same as being a global super admin,
 	 * as tested by the isAdmin() function.
-	 * @return Array an array of Course objects.
+	 * This function is dual purpose.  For admins, it returns a list of Courses.  For everyone else, it returns Sections since that is what students and
+	 * instructors are usually interested in.
+	 * @return Array an array of Course or Section objects.
 	 */
 	public function getCourseSections($offset = 0, $filters = array()) {
 
@@ -554,14 +572,29 @@ class ReservesUser {
 			$config = new Config();
 
 			$sectionCodesInLDAP = LDAPConnection::getSectionsFromLDAPRecord($username);
+			$sectionCodesInRoles = $this->getAssignedCourseSections();
+
+			$sectionCodes = array();
+
 			if (is_array($sectionCodesInLDAP[0])) {
-				foreach ($sectionCodesInLDAP[0] as $sectionCode) {
-					$section = Section::getSectionFromCalendarCode($sectionCode);
-					$accountType = $this->isActing() ? $this->getAssumedAccountType() : $this->getAccountType();
-	 				if ($section)
-						$section->assignSectionRoleForUserID($username, $accountType == $config->getSetting('ldap', 'staff_field_string') ? self::ROLE_SECTION_INSTRUCTOR : self::ROLE_SECTION_STUDENT);
-				}
+				$sectionCodes = array_merge($sectionCodesInLDAP[0], $sectionCodesInRoles);
+			} else {
+				$sectionCodes = $sectionCodesInRoles;
 			}
+			if (is_array($sectionCodes)) {
+				$sections = array();
+				foreach ($sectionCodes as $sectionCode) {
+
+					$sections[] = Section::getSectionFromCalendarCode($sectionCode);
+					$accountType = $this->isActing() ? $this->getAssumedAccountType() : $this->getAccountType();
+	 				if ($section) {
+						$section->assignSectionRoleForUserID($username, $accountType == $config->getSetting('ldap', 'staff_field_string') ? self::ROLE_SECTION_INSTRUCTOR : self::ROLE_SECTION_STUDENT);
+	 				}
+	 			}
+
+	 			return array('0' => $sections, '1' => sizeof($sections));
+			}
+			/*
 			$sqlParams = array($username);
 			$sql = "SELECT count(c.courseID) AS total FROM sectionRole r, section s, course c WHERE r.userName = ? AND s.sectionID = r.sectionID AND s.courseID = c.courseID";
 			$returnStatement = $db->Execute($sql, $sqlParams);
@@ -570,6 +603,7 @@ class ReservesUser {
 
 			$sql = "SELECT c.courseID FROM sectionRole r, section s, course c WHERE r.userName = ? AND s.sectionID = r.sectionID AND s.courseID = c.courseID
 				ORDER BY c.prefix ASC";
+			*/
 		}
 
 		$returnStatement = $db->Execute($sql, $sqlParams);
@@ -581,6 +615,23 @@ class ReservesUser {
 		return array ('0' => $courses, '1' => $totalRecords);
 	}
 
+	function getAssignedCourseSections() {
+
+		$db = getDB();
+		$sql = 'SELECT sr.sectionID from sectionRole sr WHERE sr.userName = ? AND sr.roleID = ?';
+
+		$userName = $this->isActing() ? $this->getAssumedUserName() : $this->getUserName();
+
+		$returnStatement = $db->Execute($sql, array($userName, self::ROLE_SECTION_SPECIAL_ENROL));
+		$sectionCodes = array();
+		import('items.Section');
+		while ($returnObject = $returnStatement->FetchNextObject()) {
+			$section = new Section($returnObject->SECTIONID);
+			$sectionCodes[] = $section->getCalendarCourseCode();
+		}
+
+		return $sectionCodes;
+	}
 	/**
 	 * @brief verifies that a given user has privileges to administer this paricular section.
 	 * @param int $sectionID
@@ -592,6 +643,8 @@ class ReservesUser {
 		if ($this->isAdmin() && !$this->isActing()) {
 			return true;
 		}
+
+		return false; // FIXME: for the time being, only admins can edit or create reserves.  This is what the Library staff would like for now.
 
 		$db = getDB();
 		$sql = "SELECT roleID from sectionRole WHERE sectionID = ? AND userName = ?";

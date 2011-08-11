@@ -55,8 +55,10 @@
 				if ($field->isRequired()) {
 					$classesForList[] = 'required';
 				}
+
+				$id = $field->getProperty('name') != '' ? $field->getProperty('name') : rand(0,100);
 				$classesForList[] = is_a($field, 'HiddenField') ? 'hide' : 'row';
-				$returner .= "\n" . '<li id="li-' . $field->getProperty('name'). '" class="' . join(" ", $classesForList)  . '">' . "\n";
+				$returner .= "\n" . '<li id="li-' . $id. '" class="' . join(" ", $classesForList)  . '">' . "\n";
 				$returner .= $field->display();
 				$returner .= '</li>' . "\n";
 			}

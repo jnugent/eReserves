@@ -32,6 +32,15 @@ class ReserveItem {
 	}
 
 	/**
+	 * @brief fetches the parent record id for th is Item.
+	 * @return int the reserves record id.
+	 */
+	function getReservesRecordID() {
+		$returner = $this->getAttribute('reservesrecordid');
+		return $returner;
+	}
+
+	/**
 	 * @brief returns the title of this record.
 	 * @return String the title.
 	 */
@@ -58,15 +67,6 @@ class ReserveItem {
 	}
 
 	/**
-	 * @brief returns the id of this record.
-	 * @return int the ID.
-	 */
-	function getReservesRecordID() {
-		$returner = $this->getAttribute('reservesrecordid');
-		return $returner;
-	}
-
-	/**
 	 * @brief extracts the bulkRecordIDs array from the session superglobal, which is populated
 	 * when an administrator is attempting to add a reserve record to more than one Section at once.
 	 * @return Array $bulkRecordIDs an array of ints for each ReservesRecord.
@@ -74,6 +74,27 @@ class ReserveItem {
 	function getBulkRecordIDs() {
 		$bulkRecordIDs = $_SESSION['bulkRecordIDs'];
 		return $bulkRecordIDs;
+	}
+
+	/**
+	 * @brief convenience method for getting the linkID for this ReservesRecord.
+	 * @return int the ID, if this record is linked to other ones.
+	 */
+	public function getLinkID() {
+		$returner = $this->getAttribute('linkid');
+		return $returner;
+	}
+
+	/**
+	 * @brief is it linked? return true or false.
+	 * @return boolean.
+	 */
+	public function isLinked() {
+		if ($this->getLinkedID() > 0) {
+			return true;
+		} else {
+			return false;
+		}
 	}
 
 	/**

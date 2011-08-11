@@ -6,10 +6,10 @@
 
 		{% include "pageLinks.tpl" %}
 
-		<tr><th>Course Name</th><th>Course Code</th><th>{% if user.isAdmin %} Your Actions {% else %} View Sections {% endif %}</th></tr>
+		<tr><th>Course Name</th><th>Course Code</th><th>{% if user.isAdmin and not user.isActing %} Your Actions {% else %} &nbsp; {% endif %}</th></tr>
 
 		{% if items|length == 0 %}
-			<tr><td colspan="3"><p>You currently have no courses assigned to your account.</p></td></tr>
+			<tr><td colspan="3"><p>You currently have no course sections assigned to your account.</p></td></tr>
 		{% else %}
 
 			{% if user.isAdmin and not user.isActing %}
@@ -20,18 +20,23 @@
 				</tr>
 			{% endif %}
 			
-			{% for course in items %}
-				{% set sections = course.getSections %}
+			{% for item in items %}
+				{% set sections = item.getSections %}
 	
 				<tr {% if loop.index is even %}class="plain"{% endif %}>
-					<td>{{ course.getCourseName|e }}</td><td>{{ course.getCourseCode|e }}</td>
+					<td>{{ item.getCourseName|e }}</td><td>{% if user.isAdmin and not user.isActing %} {{ item.getCourseCode|e }} {% else %} {{ item.getCalendarCourseCode|e }} {% endif %}</td>
 					<td class="action">
-						{% set courseID = course.getCourseID %}
-						{%if sections|length > 0 %}
-							<a href="{{ basePath }}/index.php/viewSections/{{ courseID }}">Sections</a> ({{ sections|length }}) 
+						{% set courseID = item.getCourseID %}
+						{% if user.isAdmin and not user.isActing %}
+							{%if sections|length > 0 %}
+								<a href="{{ basePath }}/index.php/viewSections/{{ courseID }}">Sections</a> ({{ sections|length }}) 
+							{% else %}
+								No Sections
+							{% endif %}
 						{% else %}
-							No Sections
+							<a href="{{ basePath }}/index.php/viewReserves/{{ item.getSectionID }}">View Reserves</a>
 						{% endif %} 
+						
 						{% if ((user.isAdmin and not user.isActing) or user.canAdministerCourse(courseID)) %}
 							| <a href="{{ basePath }}/index.php/editCourse/{{ courseID }}">Edit</a> 
 						{% endif %}

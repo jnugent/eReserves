@@ -19,7 +19,7 @@
 				<p>Now showing the {{ sections|length }} active sections for {{ commonName }}. <a href="{{ basePath }}/index.php/assumeUserRole/{{ emailID }}">Become this user?</a></p>
 				{% include "sectionListTemplate.tpl" %}	
 		{% elseif commonName != '' %}
-				<p>No sections for <strong>{{ commonName }}</strong> were found. Try a different ID?</p>
+				<br /><p>No sections for <strong>{{ commonName }}</strong> were found. Try a different ID?</p>
 		{% elseif emailID != '' %}
 			<p>No user with that Email ID of "{{ emailID }}" exists. Try a different ID?</p>
 		{% endif %}

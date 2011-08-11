@@ -2,6 +2,10 @@
 
 import ('items.ReserveItem');
 
+define("ELECTRONIC_ITEM_NOT_WITHIN", "0");
+define("ELECTRONIC_ITEM_PENDING", "1");
+define("ELECTRONIC_ITEM_CLEARED", "2");
+
 class ElectronicReserveItem extends ReserveItem {
 
 	var $_properties = array();
@@ -11,7 +15,7 @@ class ElectronicReserveItem extends ReserveItem {
 		if ($electronicItemID > 0) {
 			$db = getDB();
 			$sql = "SELECT e.electronicItemID, e.mimeType, e.doi, e.notes, e.reservesRecordID, e.usageRights, e.url, e.itemTitle, e.originalFileName, e.restrictToLogin, e.restrictToEnroll, e.dateAdded,
-					e.itemAuthor, e.itemSource, e.itemPublisher, e.itemPages, e.itemVolIss, e.proxy
+					e.itemAuthor, e.itemSource, e.itemPublisher, e.itemPages, e.itemVolIss, e.proxy, e.linkID
 					 FROM electronicItem e WHERE e.electronicItemID = ?";
 			$returnStatement = $db->Execute($sql, array($electronicItemID));
 			if ($returnStatement->RecordCount() ==  1) {
@@ -27,6 +31,7 @@ class ElectronicReserveItem extends ReserveItem {
 
 			$this->setAttribute('electronicitemid', '0');
 			$this->setAttribute('restricttoenroll', '1');
+			$this->setAttribute('linkid', '0');
 			return true;
 		}
 
@@ -39,15 +44,6 @@ class ElectronicReserveItem extends ReserveItem {
 	function getElectronicItemID() {
 		$returner = $this->getAttribute('electronicitemid');
 		return $returner;
-	}
-
-	/**
-	 * @brief returns the parent container Reserves Record.
-	 * @return ReservesRecord the parent ReservesRecord for this Electronic Item.
-	 */
-	function getReservesRecord() {
-		import ('items.ReservesRecord');
-		return new ReservesRecord($this->getAttribute('reservesrecordid'));
 	}
 
 	/**
@@ -77,7 +73,7 @@ class ElectronicReserveItem extends ReserveItem {
 	 */
 	function getNotes() {
 		$fields = array();
-		foreach (array('itemauthor', 'itemsource', 'itempublisher', 'itempages', 'itemvoliss') as $field) {
+		foreach (array('itemauthor', 'itemsource', 'itempublisher', 'itemvoliss', 'itempages') as $field) {
 			if (($val =& $this->getAttribute($field)) != '') {
 				$fields[] = $val;
 			}
@@ -90,14 +86,36 @@ class ElectronicReserveItem extends ReserveItem {
 	 * @brief returns a boolean about whether or not the file requires logins to view.
 	 * @return boolean true or false.
 	 */
-	function isRestricted() {
-		if ($this->getAttribute('restricttologin') == 1) {
+	function isOpenAccess() {
+		if ($this->getAttribute('restricttologin') == 0) {
 			return true;
 		} else {
 			return false;
 		}
 	}
 
+	/**
+	 * @brief electronic items can be shadowed if their copyright clearance is in dispute.  Items that are 'not_within' are shadowed to all but admins.
+	 * 'pending' items are still hidden, but tagged such that admins are aware that they are in review.
+	 * @return int ELECTRONIC_ITEM_PENDING, ELECTRONIC_ITEM_NOT_WITHIN, ELECTRONIC_ITEM_CLEARED
+	 */
+	function isShadowed() {
+		switch ($this->getAttribute('usagerights')) {
+			case 'not_within':
+				return ELECTRONIC_ITEM_NOT_WITHIN;
+				break;
+			case 'pending':
+				return ELECTRONIC_ITEM_PENDING;
+				break;
+			default:
+				return ELECTRONIC_ITEM_CLEAR;
+				break;
+		}
+	}
+
+	function getClearanceStatus() {
+		return $this->getAttribute('usagerights') == 'not_within' ? 'Not cleared' : 'Pending';
+	}
 	/**
 	 * @brief returns a boolean about whether or not the file requires a user to be enrolled in the section to view.
 	 * @return boolean true or false.
@@ -197,6 +215,9 @@ class ElectronicReserveItem extends ReserveItem {
 		$restricttologin = ReservesRequest::getRequestValue('restricttologin') != '' ? '1' : '0';
 		$restricttoenroll = ReservesRequest::getRequestValue('restricttoenroll') != '' ? '1' : '0';
 		$proxy = ReservesRequest::getRequestValue('proxy') != '' ? '1' : '0';
+		$linkid = ReservesRequest::getRequestValue('linkid') != '' ? ReservesRequest::getRequestValue('linkid') : 0;
+		$updatedlinked = ReservesRequest::getRequestValue('updatelinked') != '' ? true : false;
+		$keeplinked = ReservesRequest::getRequestValue('keeplinked') != '' ? true : false;
 
 		$url = ReservesRequest::getRequestValue('url');
 		$mimetype = '';
@@ -217,11 +238,38 @@ class ElectronicReserveItem extends ReserveItem {
 			$temporaryName = $_FILES['uploadedfile']['tmp_name'];
 			$url = moveUploadedAsset($temporaryName);
 		} else {
-			if ($url != '')
+			if ($url != '') {
 				$mimetype = ReservesRequest::determineMimeType($url);
+			}
 		}
 
-		$electronicItemIDs = array();
+		/* if these variables are still empty, this was probably a record edit and no file was uploaded so keep the original settings */
+		if ($url == '') {
+			$url = $this->getAttribute('url');
+		}
+
+		if ($originalfilename == '') {
+			$originalfilename = $this->getAttribute('originalfilename');
+		}
+
+		if ($mimetype == '') {
+			$mimetype = $this->getAttribute('mimetype');
+		}
+
+ 		$electronicItemIDs = array();
+
+		if ($updatedlinked && $keeplinked) {
+			$sql = "UPDATE electronicItem SET itemTitle = ?, doi = ?, mimeType = ?, url = ?, usageRights = ?, reservesRecordID = ?, originalFileName = ?, restrictToLogin = ?,
+					restrictToEnroll = ?, notes = ?, itemAuthor = ?, itemPublisher = ?, itemSource = ?, itemPages =? , itemVolIss = ?, proxy = ?, dateAdded = now()
+					WHERE linkID = ?";
+			$returnStatement = $db->Execute($sql, array($itemtitle, $doi, $mimetype, $url, $usagerights, $reservesrecordid, $originalfilename, $restricttologin, $restricttoenroll, $notes, $author, $publisher, $itemsource, $pages, $voliss, $proxy, $linkid));
+		}
+
+		if (!$keeplinked) {
+			$sql = 'UPDATE electronicItem SET linkID = ? WHERE electronicItemID = ?';
+			$returnStatement = $db->Execute($sql, array('0', $electronicitemid));
+		}
+
 		foreach ($reservesrecordids as $reservesrecordid) {
 			$sqlParams = array($itemtitle, $doi, $mimetype, $url, $usagerights, $reservesrecordid, $originalfilename, $restricttologin, $restricttoenroll, $notes, $author, $publisher, $itemsource, $pages, $voliss, $proxy, $electronicitemid);
 			if ($electronicitemid > 0) {
@@ -235,11 +283,19 @@ class ElectronicReserveItem extends ReserveItem {
 			$returnStatement = $db->Execute($sql, $sqlParams);
 			if ($returnStatement) {
 				$electronicItemIDs[] = $db->Insert_ID() ? $db->Insert_ID() : $electronicitemid; // we don't really need these yet but the code is here to get them.
+				if ($linkid == 0) {
+					$linkid = $db->Insert_ID();
+				}
 			}
 		}
 
+		if (sizeof($reservesrecordids) > 1) { // this was a bulk create request
+			$sql = "UPDATE electronicItem SET linkID = ? WHERE electronicItemID IN (". join(",", $electronicItemIDs) . ")";
+			$db->Execute($sql, array($linkid));
+		}
+
 		if ($returnStatement) {
-			return $electronicItemIDs;
+			return $reservesrecordids;
 		} else {
 			error_log('Error occurred: ' . $db->ErrorMsg());
 			return false;
@@ -287,6 +343,13 @@ class ElectronicReserveItem extends ReserveItem {
 		$fieldSet->addField(new HiddenField( array('required' => true, 'name' => 'MAX_FILE_SIZE', 'value' => $config->getSetting('assetstore', 'max_upload_size')) ));
 		$fieldSet->addField(new HiddenField( array('required' => true, 'name' => 'electronicitemid', 'value' => $this->getElectronicItemID()) ));
 		$fieldSet->addField(new HiddenField( array('required' => true, 'name' => 'reservesrecordid', 'value' => $this->getAttribute('reservesrecordid')) ));
+		$fieldSet->addField(new HiddenField( array('required' => true, 'name' => 'linkid', 'value' => $this->getLinkID()) ));
+
+		if ($this->getLinkID() > 0) {
+			$fieldSet->addField(new HTMLBlock(array('content' => '<strong style="color: red">This Item is linked to others. You can push these changes to the other records.</strong>')));
+			$fieldSet->addField(new Checkbox( array('name' => 'updatelinked', 'primaryLabel' => 'Update linked Records?', 'secondaryLabel' => '' ,'value' => true) ) );
+			$fieldSet->addField(new Checkbox( array('name' => 'keeplinked', 'primaryLabel' => 'Maintain link to others?', 'secondaryLabel' => '' ,'value' => true) ) );
+		}
 
 		if (sizeof($bulkRecordIDs) > 0) {
 			$fieldSet->addField(new HiddenField( array('required' => true, 'name' => 'bulkrecordids', 'value' => join(',', $bulkRecordIDs)) ));
@@ -309,6 +372,8 @@ class ElectronicReserveItem extends ReserveItem {
 							'value' => $this->getAttribute('itemtitle'), 'requiredMsg' => 'Please enter a title') ));
 		$fieldSet->addField(new TextField( array('primaryLabel' => 'Item Source', 'secondaryLabel' => '', 'name' => 'itemsource', 'required' => true,
 							'value' => $this->getAttribute('itemsource')) ));
+		$fieldSet->addField(new TextField( array('primaryLabel' => 'Item Author', 'secondaryLabel' => '', 'name' => 'itemauthor',
+							'value' => $this->getAttribute('itemauthor'), 'validationDep' => 'function(element) {if ($("#fileChoice:checked").val() == "filechoicelocal") return true; return false; } ' ) ));
 		$fieldSet->addField(ReservesRecord::getUsageRightsRadio($this->getAttribute('usagerights')));
 
 		$fieldSet->addField(new Checkbox( array('name' => 'restricttologin', 'primaryLabel' => 'Require logins to view?', 'value' => $this->getAttribute('restricttologin')) ) );
@@ -328,18 +393,12 @@ class ElectronicReserveItem extends ReserveItem {
 		}
 		$fieldSet->addField(new TextField( array('primaryLabel' => 'DOI', 'secondaryLabel' => 'A DOI', 'name' => 'doi',
 							'value' => $this->getAttribute('doi')) ));
-		$fieldSet->addField(new TextArea( array( 'primaryLabel' => 'Notes', 'secondaryLabel' => 'Notes or Citation', 'name' => 'notes',
+
+		$fieldSet->addField(new TextField( array('primaryLabel' => 'Publisher', 'secondaryLabel' => '', 'name' => 'itempublisher','value' => $this->getAttribute('itempublisher')) ));
+		$fieldSet->addField(new TextField( array('primaryLabel' => 'Volume/Issue', 'secondaryLabel' => '', 'name' => 'itemvoliss','value' => $this->getAttribute('itemvoliss')) ));
+		$fieldSet->addField(new TextField( array('primaryLabel' => 'Pages', 'secondaryLabel' => '', 'name' => 'itempages', 'value' => $this->getAttribute('itempages')) ));
+		$fieldSet->addField(new TextArea( array( 'primaryLabel' => 'Notes', 'secondaryLabel' => 'For internal use, do not display.', 'name' => 'notes',
 							'value' => $this->getAttribute('notes')) ));
-
-		$fieldSet->addField(new TextField( array('primaryLabel' => 'Item Author', 'secondaryLabel' => '', 'name' => 'itemauthor',
-							'value' => $this->getAttribute('itemauthor'), 'validationDep' => 'function(element) {if ($("#fileChoice:checked").val() == "filechoicelocal") return true; return false; } ' ) ));
-		$fieldSet->addField(new TextField( array('primaryLabel' => 'Publisher', 'secondaryLabel' => '', 'name' => 'itempublisher',
-							'value' => $this->getAttribute('itempublisher'), 'validationDep' => 'function(element) {if ($("#fileChoice:checked").val() == "filechoicelocal") return true; return false; } ') ));
-		$fieldSet->addField(new TextField( array('primaryLabel' => 'Volume/Issue', 'secondaryLabel' => '', 'name' => 'itemvoliss',
-							'value' => $this->getAttribute('itemvoliss'), 'validationDep' => 'function(element) {if ($("#fileChoice:checked").val() == "filechoicelocal") return true; return false; } ') ));
-		$fieldSet->addField(new TextField( array('primaryLabel' => 'Pages', 'secondaryLabel' => '', 'name' => 'itempages',
-							'value' => $this->getAttribute('itempages'), 'validationDep' => 'function(element) {if ($("#fileChoice:checked").val() == "filechoicelocal") return true; return false; } ') ));
-
 
 		$fieldSet->addField(new Button( array('type' => 'submit', 'label' => 'Submit')) );
 		$form->addFieldSet($fieldSet);

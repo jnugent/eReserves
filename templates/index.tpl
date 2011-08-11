@@ -15,7 +15,7 @@
 
 {% block action %}
 	{% if opPerformed %}
-		<div class="updateSuccess"><p>Your administration operation was performed successfully.</p></div>
+		<div class="updateSuccess"><p>Your administration operation was performed successfully.</p></div><br />
 	{% endif %}
 	
 	{% for form in forms %}

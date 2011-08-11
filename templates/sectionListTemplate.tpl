@@ -109,6 +109,10 @@
 			{% if course %}
 			<p>There {%if sections|length > 1%}are{% else %}is{% endif %} {{ sections|length }} course section{% if sections|length > 1 %}s{% endif %} 
 			for the course titled "<strong>{{ course.getCourseName }} ({{ course.getCourseCode }})</strong>".</p>
+
+			<p>
+				Show: {% autoescape false %}{{ includeSections }}{% endautoescape %}
+			</p>
 			{% endif %}
 		</caption>
 		<tr class="nodrag nodrop"><th>&nbsp;</th><th>Section Name</th><th {%if not user.isAdmin or user.isActing %}colspan="2"{% endif %}>Status</th>

@@ -251,7 +251,10 @@
 			}
 
 			echo $this->getProperty('submissionValidationError');
+			/*
 			echo '<div class="error"><p class="caution">Your appear to have JavaScript disabled. Please turn on JavaScript to enable help correctly completely your form.</p></div>';
+			*/
+
 			$enctype = $this->getProperty('enctype') != '' ? 'enctype="' . $this->getProperty('enctype') . '"' : '';
 			echo '<form class="valid" ' . $enctype . ' action="' . $this->getProperty('action') . '" method="' . $this->getProperty('method') . '" id="' . $this->getProperty('id') . '">';
 			echo '<div class="hiddenFields"><input type="hidden" name="requiredFields" value="' . $this->_getEncryptedRequiredFieldNames() . '" />';

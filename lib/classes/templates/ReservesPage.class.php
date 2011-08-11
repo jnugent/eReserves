@@ -5,8 +5,10 @@ class ReservesPage {
 	var $title;
 	var $template;
 	var $basePath;
+	var $op;
 
 	function __construct($title, $op) {
+		$this->op = $op;
 		$this->title = $title . $this->_getTitleForPage($op);
 		import('templates.Template');
 		$this->template = new Template();
@@ -63,6 +65,13 @@ class ReservesPage {
 		return $form;
 	}
 
+	private function _notDownloadLogin() {
+		if ($this->op != 'downloadLogin') {
+			return true;
+		} else {
+			return false;
+		}
+	}
 	/**
 	 * @brief returns a template page header
 	 * @param ReservesUser $reservesUser
@@ -86,15 +95,20 @@ class ReservesPage {
 			<link rel="stylesheet" type="text/css" media="screen" href="/core/css/validforms.css" />
 			<link rel="stylesheet" type="text/css" media="screen" href="' . $this->basePath . '/css/reserves.css" />
 			<script src="/core/js/jquery.validate.js" type="text/javascript"></script>
-			<script src="/core/js/jquery.tablednd_0_5.js" type="text/javascript"></script>
-		</head>
-		<body class="twoCol lite reserves" onLoad="focusTextField()">';
+			<script src="/core/js/jquery.tablednd_0_5.js" type="text/javascript"></script>';
+		echo '
+			<script type="text/javascript" src="' . $this->basePath . '/js/reserves.js"></script>';
+		echo '</head>
+		<body class="twoCol lite reserves' . (!$this->_notDownloadLogin() ? ' downloadOnly' : '')  . '">';
 
-		include_once ("/www/core/inc/headnav.php");
+		if ($this->_notDownloadLogin()) {
 
-		echo '<div id="contentwrapper">
-			<div id="contentcolumn">
-			<div class="innertube">';
+			include_once ("/www/core/inc/headnav.php");
+
+			echo '<div id="contentwrapper">
+				<div id="contentcolumn">
+				<div class="innertube">';
+		}
 	}
 
 	/**
@@ -103,36 +117,27 @@ class ReservesPage {
 	 */
 	public function getFooter($reservesUser) {
 
-		echo '	</div><!-- end innertube -->
-				</div><!-- end contentcolumn -->
-				</div><!-- end contentwrapper --> ';
+		if ($this->_notDownloadLogin()) {
 
-		$this->template->loadTemplate('sideBar.tpl', array('loginForm' => $this->_getLoginForm(), 'user' => $reservesUser, 'basePath' => $this->basePath));
+			echo '	</div><!-- end innertube -->
+					</div><!-- end contentcolumn -->
+					</div><!-- end contentwrapper --> ';
 
-		include_once ("/www/core/inc/footer.php");
+			$this->template->loadTemplate('sideBar.tpl', array('loginForm' => $this->_getLoginForm(), 'user' => $reservesUser, 'basePath' => $this->basePath));
 
-		// the next little block automatically puts the focus on the first visible text field on the page.
-		echo '
-			<script type="text/javascript">
-				<!--
-					function focusTextField() {
-						var inputs = $(":text:visible");
-						if (inputs.length > 0) {
-							inputs[0].focus();
-						}
-					}
-				// -->
-			</script>';
 
-		if ($_SESSION['loginError'] == true) {
-			echo '
-				<script type="text/javascript">
-					<!--
-						$(document).ready(function() {
-							$("#loginError").show();
-						});
-					// -->
-				</script>';
+			include_once ("/www/core/inc/footer.php");
+
+			if ($_SESSION['loginError'] == true) {
+				echo '
+					<script type="text/javascript">
+						<!--
+							$(document).ready(function() {
+								$("#loginError").show();
+							});
+						// -->
+					</script>';
+			}
 		}
 		echo '</body></html>';
 
@@ -195,7 +200,7 @@ class ReservesPage {
 							'requiredMsg' => 'Please enter some keywords', 'value' => $keywords)));
 
 				import('items.Section');
-				$fieldSet->addField(Section::getSemesterDropdown(TRUE, $templateState['semester']));
+				$fieldSet->addField(Section::getSemesterDropdown(TRUE, $op, $templateState['semester']));
 				$fieldSet->addField(new Button( array('type' => 'submit', 'label' => 'Submit')) );
 
 				$form->addFieldSet($fieldSet);
@@ -227,8 +232,12 @@ class ReservesPage {
 				$form->addFieldSet($fieldSet);
 				$formsArray[] = $form;
 				$templateState['forms'] = $formsArray;
+				$breadCrumb = '<a href="' . $this->basePath . '/index.php/viewCourses">View Your Courses</a> | <a href="' . $this->basePath . '/index.php/viewReserves/' . $objectID . '">View Reserves for this Section</a>';
 				break;
 
+			case 'downloadLogin':
+					$templateState['loginForm'] = $this->_getLoginForm();
+				break;
 			case 'editCourse':
 			case 'createNewCourse':
 
@@ -408,8 +417,24 @@ class ReservesPage {
 				import('items.Course');
 				if ($objectID > 0) {
 					$course = new Course($objectID);
-					$sections = $course->getSections();
+					$includeSJ = 'FR';
+					if (isset($extraArgs[0])) {
+						$includeSJ = $extraArgs[0];
+					}
+					$sections = $course->getSections($includeSJ);
 					$templateState['course'] = $course;
+
+					$includeSections = array('All Sections' => 'ALL', 'Fredericton only' => 'FR', 'Saint John only' => 'SJ');
+					$includeSectionLinks = array();
+					foreach ($includeSections as $linkText => $urlOp) {
+						$style = ($urlOp == $includeSJ) ? 'style="font-weight: bold;"' : '';
+						$includeSectionLinks[] .= '<span ' . $style . '>' . (($urlOp != $includeSJ) ? '<a href="' . $this->basePath .
+						'/index.php/viewSections/' .  $objectID .
+						(($urlOp != '') ? '/' . $urlOp : '') . '">' : '') . $linkText .
+						($urlOp != $includeSJ ? '</a>' : '') . '</span>';
+					}
+					$templateState['includeSections'] = join(' | ', $includeSectionLinks);
+					$templateState['includeSJ'] = $includeSJ;
 					$templateState['sections'] = $sections;
 					$templateState['defaultHeadingTitle'] = $config->getSetting('bulk_reserves', 'default_heading_title');
 				}
@@ -470,8 +495,11 @@ class ReservesPage {
 				import('items.Section');
 				$pageOffset = intval($extraArgs[0]) > 0 ? intval($extraArgs[0]) : 0;
 				$semester = Section::isValidSemester($extraArgs[1]) ? $extraArgs[1] : Section::getCurrentSemester();
-				$sectionsWithReserves = ReservesSearch::getSectionsWithReserves($pageOffset, $semester);
-				$templateState['sections'] = $sectionsWithReserves;
+				list($sectionsWithReserves, $totalRecords) = ReservesSearch::getSectionsWithReserves($pageOffset, $semester);
+				$templateState['items'] = $sectionsWithReserves;
+				$templateState['semester'] = $semester;
+				$templateState['totalRecords'] = $totalRecords;
+				$templateState['pageOffset'] = $pageOffset;
 				$templateState['semesterForm'] = Section::assembleSemesterChooseForm($semester);
 
 			break;

@@ -27,7 +27,7 @@
 						{% set reserves = section.getReserves %}
 						{% if sectionID != prevSectionID %}
 							<tr id="section{{ sectionID }}" {% if loop.index is even %}class="plain"{% endif %}>
-								<td><a href="{{ basePath }}/index.php/viewReserves/{{ section.getSectionID }}">{{ section.getCourseName }}</a></td>
+								<td><a href="{{ basePath }}/index.php/viewReserves/{{ section.getSectionID }}">{{ section.getCourseName }}</a> ({{ section.getSectionNumber }})</td>
 								<td>{{ section.getShortCourseCode }}</td>
 									{% set instructors = section.getInstructors %}
 								<td>{% if instructors != '' %}{{ instructors }}{% endif %}</td>

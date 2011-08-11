@@ -2,34 +2,7 @@
 
 {% block listspace %}
 
-		<script type="text/javascript">
-		<!--
-		function getOPACRecord(itemID) {
-		
-			$("#progress").toggle();
-			$.post('{{ basePath }}/index.php/opacProxy/' + itemID, function (data) {
-					// data is valid JSON
-					var jsonObject = jQuery.parseJSON(data);
-					var htmlStr;
-					if (jsonObject.title == null) {
-						htmlStr = 'There is no record for this Call Number.';
-					} else {
-						htmlStr = jsonObject.title + '<br />' + jsonObject.author + '<br />' + jsonObject.callNumber;
-						$('#' + itemID + '-where').html(jsonObject.location + '<br />' + jsonObject.library);
-						if (jsonObject.checkedOut == '0') {
-							$('#' + itemID + '-where').html(jsonObject.location + '<br />' + jsonObject.library);
-							$('#' + itemID + '-avail').html(jsonObject.loanPeriod);
-						} else {
-							$('#' + itemID + '-avail').html('Checked Out: Due back @ ' + jsonObject.dueBack);
-						}
-					}
-					$("#" + itemID).html(htmlStr);
-					$("#progress").toggle();
-				}
-			);
-		}
-		// -->
-		</script>
+
 
 	{%if user.canAdministerSection(section.getSectionID) %}
 		{% set canAdmin = true %}
@@ -105,27 +78,18 @@
 			// -->
 		</script>
 	{% endif %}
-	<script type="text/javascript">
-		function externalLinks() { 
-			if (!document.getElementsByTagName) return; 
-			var anchors = document.getElementsByTagName("a"); 
-			for (var i=0; i<anchors.length; i++) { 
-				var anchor = anchors[i]; 
-				if (anchor.getAttribute("href") && anchor.getAttribute("rel") == "external") anchor.target = "_blank"; } 
-			} 
-			window.onload = externalLinks;
-	</script>
 
 	{% if section.getSectionID > 0 %}
 		{% set instructors = section.getInstructors %}	
 		<h1>{{ section.getPrefix }} {{ section.getNumber }} - {{ section.getCourseName }} <br />
 			<span class="small">{{ section.getCalendarCourseCode }}{% if instructors != '' %}<br />Instructors: {{ instructors }}{% endif %}</span>
 		</h1>
-			{%if user.isAdmin %}<a href="{{ basePath }}/index.php/editSection/{{ section.getSectionID }}">Edit Section</a> {% endif %}
 			{%if canAdmin %}
-				| <a href="{{ basePath }}/index.php/assignPeople/{{ section.getSectionID }}">Assign People</a> | 
+				<a onClick="showAddItemModal('{{ basePath }}/index.php/adminCourseReserves/')" href="#">Add New Item</a> |
 				<a href="{{ basePath }}/index.php/itemHeadings/{{ section.getSectionID }}/0">Manage Headings</a> |
-				<a onClick="showAddItemModal('{{ basePath }}/index.php/adminCourseReserves/')" href="#">Add New Item</a>
+				| <a href="{{ basePath }}/index.php/assignPeople/{{ section.getSectionID }}">Assign People</a>  |
+				<a href="{{ basePath }}/index.php/editSection/{{ section.getSectionID }}">Edit Section</a> 
+				
 			{% endif %}
 
 		{% if itemHeadings|length == 0 %}
@@ -133,47 +97,50 @@
 		{% else %}
 		
 			{% for heading in itemHeadings %}
-				<table id="itemHeadings" class="reservesTable">
+				<table id="itemHeadings{{ loop.index }}" class="reservesTable">
 				
-					<tr id="{{ heading.getItemHeadingID }}">
+					<tr id="heading-{{ heading.getItemHeadingID }}">
 						<th colspan="{% if canAdmin %}4{% else %}3{% endif %}">{{ heading.getHeadingName|e }}</th>
 					</tr>
 					{% if heading.getListedReserves|length > 0 %}
 						{% for reserve in heading.getListedReserves %}
-							<tr {% if loop.index is even %}class="plain"{% endif %}>
-								{% set totalNumber = reserve.getTotalNumberOfItems(user) %}
+							{% set totalNumber = reserve.getTotalNumberOfItems(user) %}
+							<tr class="firstRow{% if loop.index is even %} plain{% endif %}">
 								{% if totalNumber == 1 %}
 									{% set recordInfo = reserve.getSingleItem(user, basePath) %}
 									{% if recordInfo.type == 'e' %}
-										<td width="50%" id="{{ recordInfo.id }}">
+										<td style="width: 50%" id="e{{ recordInfo.id }}">
 											{% if recordInfo.loginRequired == false %}
-												<a rel="external" href="{{ recordInfo.url }}" class="{{ recordInfo.class }}">{{ recordInfo.title }}</a>
+												<strong><a rel="external" href="{{ recordInfo.url }}" class="noicon {{ recordInfo.class }}">{{ recordInfo.title }}</a></strong>
+												{% autoescape false %}{{ recordInfo.info }}{% endautoescape %}
 											{% else %}
 												{% set displayLoginMessage = true %}
-												{{ recordInfo.title }} <img src="{{ basePath }}/images/lock.png" title="please login to access this item" height="25" />
+												<strong><a rel="external" href="{{ recordInfo.url }}" class="noicon {{ recordInfo.class }}">{{ recordInfo.title }}</a></strong> 
+												{% autoescape false %}{{ recordInfo.info }}{% endautoescape %}
+												<img src="{{ basePath }}/images/lock.png" title="please login to access this item" height="15" />
+												
 											{% endif %}
 										</td>
-										<td width="25%">{{ recordInfo.display }}</td>
-										<td width="*">{% autoescape false %}{{ recordInfo.info }}{% endautoescape %}</td>
+										<td style="width: 25%">{{ recordInfo.display }}</td>
+										<td>&nbsp;</td>
 										{% if canAdmin %}
-											<td width="*">
+											<td>
 												<a href="{{ basePath }}/index.php/editElectronicItem/{{ recordInfo.id }}">Edit</a> | 
 												<a onClick="showDeleteModal('{{ basePath }}/index.php/deleteElectronicItem/{{ recordInfo.id }}')" href="#">Delete</a>
 											</td>
 										{% endif %}
 										</tr>
 										{% if recordInfo.notes != '' %}
-											<tr>
+											<tr class="secondRow{% if loop.index is even %} plain{% endif %}">
 												<td colspan="{% if canAdmin %}4{% else %}3{% endif %}">{{ recordInfo.notes }}</td>
-											</tr>
 										{% endif %}
 									{% else %}
-										<td id="{{ recordInfo.id }}">
-											<a href="{{ recordInfo.url }}" class="{{ recordInfo.class }}">{{ recordInfo.title }}</a>
+										<td id="p{{ recordInfo.id }}">
+											<a href="{{ recordInfo.url }}" class="{{ recordInfo.class }}"><strong>{{ recordInfo.title }}</strong></a>
 										</td>
-										<td id="{{ recordInfo.id }}-where"></td><td id="{{ recordInfo.id }}-avail"></td>
+										<td id="p{{ recordInfo.id }}-where"></td><td id="p{{ recordInfo.id }}-avail"></td>
 										{% if canAdmin %}
-											<td width="*">
+											<td>
 												<a href="{{ basePath }}/index.php/editPhysicalItem/{{ recordInfo.id }}">Edit</a> | 
 												<a onClick="showDeleteModal('{{ basePath }}/index.php/deletePhysicalItem/{{ recordInfo.id }}')" href="#">Delete</a>
 											</td>
@@ -181,12 +148,13 @@
 									{% endif %}
 								{% else %} 
 									{% if totalNumber > 1 %}
-										<td width="50%"><a href="{{ basePath }}/index.php/viewReserve/{{ reserve.getReservesRecordID }}">{{ reserve.getTitle }}</a></td>
-										<td width="50%"colspan="2">More than one item.  Click to view them.</td>
+										
+										<td style="width: 50%"><a href="{{ basePath }}/index.php/viewReserve/{{ reserve.getReservesRecordID }}"><strong>{{ reserve.getTitle }}</strong></a></td>
+										<td style="width: 50%" colspan="{% if canAdmin %}3{% else %}2{% endif %}">More than one item.  Click to view them.</td>
 									{% else %} 
 										{%if user.isAdmin %}
-											<td width="50%"><a href="{{ basePath }}/index.php/viewReserve/{{ reserve.getReservesRecordID }}">{{ reserve.getTitle }}</a></td>
-											<td width="50%"colspan="{% if canAdmin %}3{% else %}2{% endif %}">
+											<td style="width: 50%"><a href="{{ basePath }}/index.php/viewReserve/{{ reserve.getReservesRecordID }}"><strong>{{ reserve.getTitle }}</strong></a></td>
+											<td style="width: 50%" colspan="{% if canAdmin %}3{% else %}2{% endif %}">
 												No items added.  You're an admin and users won't see this. 
 												<a onClick="showDeleteModal('{{ basePath }}/index.php/deleteReservesRecord/{{ reserve.getReservesRecordID }}')" href="#">Delete Completely</a> | 
 												<a href="{{ basePath }}/index.php/createReservesItem/{{ reserve.getReservesRecordID }}/0">Add an Item</a>
@@ -216,6 +184,8 @@
 		$('#enrollmentRequired').show();
 	});
 	{% endif %}
+
+	window.onload = externalLinks;
 
 	</script>
 

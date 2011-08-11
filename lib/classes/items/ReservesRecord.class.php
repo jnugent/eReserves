@@ -81,12 +81,12 @@ class ReservesRecord extends ReserveItem {
 
 		import('forms.Radio');
 
-		$radio = new Radio( array('name' => 'usagerights', 'value' => $usageRights, 'validationDep' => 'function(element) {if ($("#fileChoice:checked").val() == "filechoicelocal") return true; return false; }', 'primaryLabel' => '<a target="_blank" href="http://lib.unb.ca/copyright/">Copyright Statement</a>', 'secondaryLabel' => 'Please choose one', 'requiredMsg' => 'Please choose a statement') );
-		$radio->addButton( array('id' => 'creator', 'value'=> 'creator', 'caption' => 'I am the creator of this material') );
-		$radio->addButton( array('id' => 'no_infringe', 'value' => 'no_infringe', 'caption' => 'To the best of my knowledge these materials do not infringe on copyright') );
+		$radio = new Radio( array('name' => 'usagerights', 'value' => $usageRights, 'validationDep' => 'function(element) {if ($("#fileChoice:checked").val() == "filechoicelocal") return true; return false; }', 'primaryLabel' => '<a target="_blank" href="http://lib.unb.ca/copyright/">Copyright Statement</a>', 'secondaryLabel' => 'To the best of my knowledge:', 'requiredMsg' => 'Please choose a statement') );
+		$radio->addButton( array('id' => 'creator', 'value'=> 'creator', 'caption' => 'The instructor is the creator of this material') );
+		$radio->addButton( array('id' => 'no_infringe', 'value' => 'no_infringe', 'caption' => 'These materials do not infringe on copyright') );
 		$radio->addButton( array('id' => 'cleared', 'value' => 'cleared', 'caption' => 'The materials copied here have been cleared of copyright from the rights holder') );
 		$radio->addButton( array('id' => 'pending', 'value' => 'cleared', 'caption' => 'The materials copied are pending copyright clearance from the rights holder') );
-		$radio->addButton( array('id' => 'not_within', 'value' => 'not_within', 'caption' => 'To the best of my knowledge these materials are NOT within the limits of copyright') );
+		$radio->addButton( array('id' => 'not_within', 'value' => 'not_within', 'caption' => 'These materials require copyright clearance review.') );
 
 		return $radio;
 	}
@@ -200,10 +200,11 @@ class ReservesRecord extends ReserveItem {
 			$item = new ElectronicReserveItem($electronicItems[0]);
 
 			$loginRequired = true;
-			if (!$item->isRestricted() || $reservesUser->isAdmin() || ( $reservesUser->isLoggedIn() && !$item->requiresEnrolment()) ||
+ 
+			if ($reservesUser->isAdmin() || ( $reservesUser->isLoggedIn() && !$item->requiresEnrolment() && $item->isOpenAccess()) ||
 				$this->getSection()->userIsEnrolled($reservesUser->getUserName()) ) { $loginRequired = false; }
 
-			return array('loginRequired' => $loginRequired, 'type' => 'e', 'id' => $item->getElectronicItemID(), 'title' => $this->getTitle(), 'display' => 'Available Online', 'info' => '<img height="25" src="' . $basePath . '/images/mimeIcons/' . $item->mapTypeToImg() . '.png" />', 'url' => $item->getURL(), 'notes' => $item->getNotes());
+			return array('loginRequired' => $loginRequired, 'type' => 'e', 'id' => $item->getElectronicItemID(), 'title' => $this->getTitle(), 'display' => 'Available Online', 'info' => '<img height="15" src="' . $basePath . '/images/mimeIcons/' . $item->mapTypeToImg() . '.png" alt="MIME type" />', 'url' => $item->getURL(), 'notes' => $item->getNotes());
 		}
 	}
 
@@ -431,7 +432,7 @@ class ReservesRecord extends ReserveItem {
 
 		if ($this->getLinkID() > 0) {
 			$fieldSet->addField(new HTMLBlock(array('content' => '<strong style="color: red">This Reserves Record is linked to others. You can push these changes to the other records.</strong>')));
-			$fieldSet->addField(new Checkbox( array('name' => 'updatelinked', 'primaryLabel' => 'Update linked Records?', 'secondaryLabel' => '' ,'value' => '') ) );
+			$fieldSet->addField(new Checkbox( array('name' => 'updatelinked', 'primaryLabel' => 'Update linked Records?', 'secondaryLabel' => '' ,'value' => true) ) );
 			$fieldSet->addField(new Checkbox( array('name' => 'keeplinked', 'primaryLabel' => 'Maintain link to others?', 'secondaryLabel' => '' ,'value' => true) ) );
 		}
 		$fieldSet->addField(new TextField( array('required' => true, 'primaryLabel' => 'Reserves Record Title', 'secondaryLabel' => 'plain-text title', 'name' => 'reservesrecordtitle',

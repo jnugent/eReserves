@@ -192,7 +192,7 @@ class Section extends ElectronicReserveItem {
 		$form = new Form(array('id' => 'viewAllReserves', 'method' => 'get', 'action' => '/reserves/index.php/' . $action . '/0'));
 		$fieldSet = new FieldSet(array('legend' => 'Choose Semester'));
 
-		$select = self::getSemesterDropdown(FALSE, $semester);
+		$select = self::getSemesterDropdown(FALSE, $action, $semester);
 
 		$fieldSet->addField($select);
 		$form->addFieldSet($fieldSet);
@@ -206,13 +206,16 @@ class Section extends ElectronicReserveItem {
 	 * @param String $semester the current semester.
 	 * @return Select a select form object.
 	 */
-	static function getSemesterDropdown($all = FALSE, $semester = '') {
+	static function getSemesterDropdown($all = FALSE, $action, $semester = '') {
 		$semesters = self::_getPlausibleSemesters(TRUE);
 		if ($semester == '' && $all) {
 			$semester = self::getCurrentSemester();
 		}
+
+		$onChange = ($action == 'viewAllReserves') ? 'switchSemesters()' : '';
+
 		$select = new Select( array('name' => 'semester', 'primaryLabel' => 'Course Semester',
-				'requiredMsg' => 'Please choose a semester', 'value' => $semester, 'onChange' => 'switchSemesters()') );
+				'requiredMsg' => 'Please choose a semester', 'value' => $semester, 'onChange' => $onChange) );
 		$select->addOption( array('value' => '', 'label' => '------') );
 		foreach ($semesters as $semesterName => $semesterReservesCount) {
 			$label = $semesterName;
@@ -266,6 +269,16 @@ class Section extends ElectronicReserveItem {
 		$returner = $this->getAttribute('coursename');
 		return $returner;
 	}
+
+	/**
+	 * @brief convenience function for getting the course ID.
+	 * @return int The Course ID.
+	 */
+	function getCourseID() {
+		$returner = $this->getAttribute('courseid');
+		return $returner;
+	}
+
 
 	/**
 	 * @brief convenience function for getting the section number.
@@ -606,7 +619,7 @@ class Section extends ElectronicReserveItem {
 		$fieldSet = new FieldSet(array('legend' => $label));
 		$fieldSet->addField(new HiddenField( array('required' => true, 'name' => 'sectionid', 'value' => $this->getSectionID()) ));
 
-		$select = self::getSemesterDropdown(TRUE, $this->getAttribute('year') . $this->getAttribute('term'));
+		$select = self::getSemesterDropdown(TRUE, $action, $this->getAttribute('year') . $this->getAttribute('term'));
 		$fieldSet->addField($select);
 
 		unset ($select);

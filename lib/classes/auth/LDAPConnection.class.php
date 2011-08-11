@@ -214,7 +214,7 @@ class LDAPConnection {
 		if ($ldapConnection) {
 			$ldapBind = ldap_bind($ldapConnection, $config->getSetting('ldap', 'administration_dn'), $config->getSetting('ldap', 'administration_pass'));
 			if ($ldapBind && $searchString != '') { // search string should never be empty anyway
-				$result = ldap_search($ldapConnection, "dc=unb,dc=ca", "(uid=" . $searchString . "*)", array('dn', 'cn', 'mail', 'givenName', 'uid'));
+				$result = ldap_search($ldapConnection, "dc=unb,dc=ca", "(uid=*" . $searchString . "*)", array('dn', 'cn', 'mail', 'givenName', 'uid'));
 			}
 			if ($result) {
 				$entries = ldap_get_entries($ldapConnection, $result);
@@ -225,7 +225,12 @@ class LDAPConnection {
 					foreach ($entries as $entry) {
 							if (is_array($entry)) {
 							if (array_key_exists('uid', $entry)) {
-								$validEntries[ $entry['uid'][0] ] = $entry['cn'][0];
+								$uids = $entry['uid'];  // FIXME WAAAACKED
+								foreach ($uids as $uid) {
+									if (preg_match("{" . $searchString . "}", $uid)) {
+										$validEntries[ $uid ] = $entry['cn'][0];
+									}
+								}
 							}
 						}
 					}

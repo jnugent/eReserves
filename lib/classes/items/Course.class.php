@@ -151,10 +151,25 @@ class Course extends ElectronicReserveItem {
 	 * @brief returns a list of Section objects that have been created for this course.
 	 * @return Array the sections for this course.
 	 */
-	function getSections() {
+	function getSections($justFR = 'FR') {
 
 		$db = getDB();
-		$sql = "SELECT s.sectionID FROM section s WHERE s.courseID = ? ORDER BY year DESC, sectionID DESC";
+		$sectionLimit = '';
+
+		switch ($justFR) {
+			case 'FR':
+				$sectionLimit = 'AND s.sectionNumber LIKE "FR%"';
+			break;
+
+			case 'SJ':
+				$sectionLimit = 'AND s.sectionNumber LIKE "SJ%"';
+			break;
+
+			default:
+			break;
+		}
+			$sql = "SELECT s.sectionID FROM section s WHERE s.courseID = ? " . $sectionLimit  . " ORDER BY year DESC, sectionID DESC";
+
 		$returnStatement = $db->Execute($sql, array($this->getCourseID()));
 
 		import('items.Section');

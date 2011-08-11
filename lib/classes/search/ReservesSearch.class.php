@@ -54,7 +54,7 @@ class ReservesSearch {
 
 		$whereClause = self::buildMySQLWhereClause($fields, $keywords, $semesterSQL, $db);
 		$sql .= $whereClause;
-		error_log($sql);
+
 		$returnStatement = $db->Execute($sql, $sqlParams);
 		$totalRecords = $returnStatement->RecordCount();
 
@@ -123,15 +123,23 @@ class ReservesSearch {
 			$term = $matches[2];
 		}
 
-		$sql = 'SELECT DISTINCT s.sectionID from section s, itemHeading i, reservesRecord r WHERE s.year = ? AND s.term = ? AND s.sectionID = i.sectionID AND i.itemHeadingID = r.itemHeadingID ORDER BY s.sectionID, i.itemHeadingID';
-		$returnStatement = $db->Execute($sql, array($year, $term));
 		$sectionsWithReserves = array();
-		while ($recordObject = $returnStatement->FetchNextObject()) {
-			$section = new Section($recordObject->SECTIONID);
-			$sectionsWithReserves[] = $section;
-		}
+		// get a total record count first.
+		$sql = 'SELECT DISTINCT s.sectionID from section s, itemHeading i, reservesRecord r WHERE s.year = ? AND s.term = ? AND s.sectionID = i.sectionID AND i.itemHeadingID = r.itemHeadingID ORDER BY s.sectionID, i.itemHeadingID';
 
-		return $sectionsWithReserves;
+		$returnStatement = $db->Execute($sql, array($year, $term));
+
+		$totalRecords = $returnStatement->RecordCount();
+		if ($totalRecords > 0) {
+			$sql = 'SELECT DISTINCT s.sectionID from section s, itemHeading i, reservesRecord r WHERE s.year = ? AND s.term = ? AND s.sectionID = i.sectionID AND i.itemHeadingID = r.itemHeadingID ORDER BY s.sectionID, i.itemHeadingID LIMIT ?, 25';
+			$returnStatement = $db->Execute($sql, array($year, $term, $pageOffset));
+
+			while ($recordObject = $returnStatement->FetchNextObject()) {
+				$section = new Section($recordObject->SECTIONID);
+				$sectionsWithReserves[] = $section;
+			}
+		}
+		return array($sectionsWithReserves, $totalRecords);
 	}
 
 	/**
@@ -143,17 +151,25 @@ class ReservesSearch {
 	 */
 	static function buildMySQLWhereClause($fields, $keywords, $semesterSQL, &$db) {
 
-		$keywordArray = preg_replace("/$/", "*", preg_split("/\s+/", $keywords));
-		$match = " ( MATCH (" . join(',', $fields) . ") AGAINST (" . $db->qstr(join(" ", $keywordArray)) . " IN BOOLEAN MODE) ";
+		$searchFields = " LOWER(CONCAT(" . join(', ', array_merge($fields, array('sr.userName', 'sr.firstName', 'sr.lastName'))) . '))';
+		$keywordArray = preg_split("/\s+/", $keywords, -1, PREG_SPLIT_NO_EMPTY);
+		$searchFieldArray = array();
+		foreach ($keywordArray as $keyword) {
+			$searchFieldArray[] .= $searchFields . ' LIKE '. $db->qstr('%' . $keyword . '%');
+		}
+
+		$searchFieldSQL = join(' AND ', $searchFieldArray);
+
+//		$match = " ( MATCH (" . join(',', $fields) . ") AGAINST (" . $db->qstr(join(" ", $keywordArray)) . " IN BOOLEAN MODE) ";
 
 		if ($semesterSQL == '') {
-			$returner =  "WHERE " . $match;
+			$returner =  "WHERE " . $searchFieldSQL;
 		} else {
-			$returner = $semesterSQL . "  AND " . $match;
+			$returner = $semesterSQL . "  AND " . $searchFieldSQL;
 		}
 
 //		$returner .= ' AND CONCAT(sr.firstName, sr.lastName) LIKE ' . $db->qstr('%' . $instructor . '%') . ' ';
-		$returner .= " OR MATCH(sr.userName, sr.firstName, sr.lastName) AGAINST (" . $db->qstr(join(" ", $keywordArray)) . " IN BOOLEAN MODE) )";
+//		$returner .= " OR MATCH(sr.userName, sr.firstName, sr.lastName) AGAINST (" . $db->qstr(join(" ", $keywordArray)) . " IN BOOLEAN MODE) )";
 
 		return $returner;
 	}
