@@ -127,6 +127,8 @@ class LDAPConnection {
 						}
 						return array($courses, $entry[0]['cn'][0], $entry[0][$accountTypeField][0]);  // include the User's name, as well the account type
 					}
+				} else {
+					return null;
 				}
 			}
 		}

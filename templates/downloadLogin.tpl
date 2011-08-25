@@ -44,6 +44,9 @@
 <div id="contentcolumn">
 	<div class="innertube">
 
+	{% if noAccess %}<p class="caution">You must log in to download this resource.</p>{% endif %}
+	 {%if loginError %}<p class="caution"You do not appear to have access to this item.</p>{% endif %}
+	 
 	{{ loginForm.display }}
 
 	<div id="loginNotes">

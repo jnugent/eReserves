@@ -25,7 +25,7 @@
 						serializedOrder = $.tableDnD.serialize();
 						$.post("{{ basePath }}/index.php/reorderItemHeadings/{{ id }}", serializedOrder);
 					}
-				});
+			});
 
 			$('.headingTitle').dblclick(function() {
 

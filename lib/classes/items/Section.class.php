@@ -113,22 +113,19 @@ class Section extends ElectronicReserveItem {
 		$currentYear = intval(date('Y'));
 		$fiveYearsPrior = $currentYear - 1;
 		$fiveYearsHence = $currentYear + 1;
-		$semesterTerms = array('FA', 'SU', 'IN', 'SP', 'WI');
+		$semesterTerms = getSemesterTerms();
+
+		import('general.Semester');
+		$sql = 'SELECT semesterID from semester where isActive = ? ORDER BY sequence ASC';
+		$returnStatement = $db->Execute($sql, array('1'));
 
 		$semesters = array();
-		$sql = $db->Prepare('SELECT count(r.reservesRecordID) AS reservesTotal FROM reservesRecord r, itemHeading i, section s WHERE
-							r.itemHeadingID = i.itemHeadingID AND i.sectionID = s.sectionID AND s.year = ? AND s.term = ?');
 
-		for ($year = $fiveYearsHence ; $year >= $fiveYearsPrior ; $year --) {
-			if (!$noFutureYears || $year <= $currentYear) {
-				foreach ($semesterTerms as $term) {
-					$sqlParams = array($year, $term);
-					$returnStatement = $db->execute($sql, $sqlParams);
-					$returnObject = $returnStatement->FetchNextObject();
-					$semesters[$year . $term] = $returnObject->RESERVESTOTAL;
-				}
-			}
+		while ($recordObject = $returnStatement->FetchNextObject()) {
+			$semester = new Semester($recordObject->SEMESTERID);
+			$semesters[ $semester->getYear() . $semester->getTerm() ] = $semesterTerms[$semester->getTerm()] . ' ' . $semester->getYear();
 		}
+
 		return $semesters;
 	}
 
@@ -152,17 +149,19 @@ class Section extends ElectronicReserveItem {
 	 */
 	static function getCurrentSemester() {
 
-		$currMonth = date('n');
-		$term = '';
-		if ($currMonth <= 4) {
-			$term = 'WI';
-		} else if ($currMonth <= 8) {
-			$term = 'SU';
+		$db = getDB();
+		$sql = 'SELECT year, term FROM semester WHERE isCurrent = ? LIMIT 1'; // we limit in case someone has checked off more than one
+		$returnStatement = $db->Execute($sql, array('1'));
+		if ($returnStatement->RecordCount() == 1) {
+			$recordObject = $returnStatement->FetchNextObject();
+			return $recordObject->YEAR . $recordObject->TERM;
 		} else {
-			$term = 'FA';
+			$currDate = date('Y-m-d');
+			$sql = 'SELECT year, term FROM semester WHERE startDate <= ?  AND ? < endDate LIMIT 1';
+			$returnStatement = $db->Execute($sql, array($currDate, $currDate));
+			$recordObject = $returnStatement->FetchNextObject();
+			return $recordObject->YEAR . $recordObject->TERM;
 		}
-
-		return intval(date('Y')) . $term;
 	}
 
 	/**
@@ -216,10 +215,9 @@ class Section extends ElectronicReserveItem {
 
 		$select = new Select( array('name' => 'semester', 'primaryLabel' => 'Course Semester',
 				'requiredMsg' => 'Please choose a semester', 'value' => $semester, 'onChange' => $onChange) );
-		$select->addOption( array('value' => '', 'label' => '------') );
-		foreach ($semesters as $semesterName => $semesterReservesCount) {
-			$label = $semesterName;
-			$select->addOption( array('value' => $semesterName, 'label' => $label) );
+		$select->addOption( array('value' => '', 'label' => 'Any Semester') );
+		foreach ($semesters as $value => $label) {
+			$select->addOption( array('value' => $value, 'label' => $label) );
 		}
 
 		return $select;
@@ -290,6 +288,16 @@ class Section extends ElectronicReserveItem {
 	}
 
 	/**
+	 * @brief used when ordering sections on sectionListTemplate.  Used to determine if a new heading should be printed out.
+	 * @return a string like 2011FA
+	 */
+
+	function getYearTerm() {
+		$returner = $this->getAttribute('year') . $this->getAttribute('term');
+		return $returner;
+	}
+
+	/**
 	 * @brief this concatenates the relevant bits of the course info to build the internal
 	 * string used by other applications, like the calendar and BlackBoard.
 	 * @return String the code for the course.
@@ -355,6 +363,22 @@ class Section extends ElectronicReserveItem {
 		$db = getDB();
 		$sql = "DELETE FROM sectionRole WHERE sectionID = ? AND roleID = ?";
 		$returnStatement = $db->Execute($sql, array($this->getSectionID(), ReservesUser::ROLE_SECTION_STUDENT));
+		if ($returnStatement) {
+			return true;
+		} else {
+			return false;
+		}
+	}
+
+	/**
+	 * @brief removes all student associations with this section. Does NOT remove instructor records.
+	 * @return boolean true or false, success or failure.
+	 */
+	function unenrolEveryone() {
+
+		$db = getDB();
+		$sql = "DELETE FROM sectionRole WHERE sectionID = ?";
+		$returnStatement = $db->Execute($sql, array($this->getSectionID()));
 		if ($returnStatement) {
 			return true;
 		} else {
@@ -501,6 +525,40 @@ class Section extends ElectronicReserveItem {
 		/* it is important to constrain this to the sectionID.  Otherwise Sections could delete Headings that are not their own */
 		$sql = "DELETE FROM itemHeading WHERE itemHeadingID = ? AND sectionID = ?";
 		$returnStatement = $db->Execute($sql, array($itemHeadingID, $this->getSectionID()));
+		if ($returnStatement) {
+			return true;
+		} else {
+			return false;
+		}
+	}
+
+	/**
+	 * @brief deletes an ItemHeading object assigned to this Section.
+	 * @param int the ID of the heading to remove.
+	 * @return boolean true or false on success or failure.
+	 */
+	function deleteAllHeadings() {
+		$db = getDB();
+		/* it is important to constrain this to the sectionID.  Otherwise Sections could delete Headings that are not their own */
+		$sql = "DELETE FROM itemHeading WHERE sectionID = ?";
+		$returnStatement = $db->Execute($sql, array($this->getSectionID()));
+		if ($returnStatement) {
+			return true;
+		} else {
+			return false;
+		}
+	}
+
+	/**
+	 * @brief deletes an ItemHeading object assigned to this Section.
+	 * @param int the ID of the heading to remove.
+	 * @return boolean true or false on success or failure.
+	 */
+	function delete() {
+		$db = getDB();
+		/* note: this just deletes the secton.  You probably want to delete the items, headings, and assigned student/instructor roles first */
+		$sql = "DELETE FROM section WHERE sectionID = ?";
+		$returnStatement = $db->Execute($sql, array($this->getSectionID()));
 		if ($returnStatement) {
 			return true;
 		} else {

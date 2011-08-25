@@ -134,6 +134,8 @@ class PhysicalReserveItem extends ReserveItem {
 			$returnStatement = $db->Execute($sql, array('0', $physicalitemid));
 		}
 
+		$newItem = false;
+
 		foreach ($barcodes as $barcode) {
 
 			$physicalItemIDs = array();
@@ -144,6 +146,7 @@ class PhysicalReserveItem extends ReserveItem {
 				if ($physicalitemid > 0) {
 					$sql = "UPDATE physicalItem SET barCode = ?, shadow = ?, reservesRecordID = ?, dateAdded = now() WHERE physicalItemID = ?";
 				} else {
+					$newItem = true;
 					$sql = "INSERT INTO physicalItem (barCode, shadow, reservesRecordID, physicalItemID, dateAdded)
 						VALUES (?, ?, ?, ?, now())";
 				}
@@ -161,6 +164,15 @@ class PhysicalReserveItem extends ReserveItem {
 			if (sizeof($reservesrecordids) > 1) { // this was a bulk create request
 				$sql = "UPDATE physicalItem SET linkID = ? WHERE physicalItemID IN (". join(",", $physicalItemIDs) . ")";
 				$db->Execute($sql, array($linkid));
+			}
+
+			if ($newItem) { // if they are creating a new item, set the (maybe) empty parent Reserves Record title to the item title to speed things up.
+				$opacInformation = json_decode(accessOPACRecord(self::PHYSICAL_RESERVE_ITEM_QUERY, array('barCode' => $barcode)));
+				$itemTitle = html_entity_decode($opacInformation->title);
+				foreach ($reservesrecordids as $reservesrecordid) {
+					$sql = "UPDATE reservesRecord SET reservesRecordTitle = ? WHERE reservesRecordID = ? AND reservesRecordTitle = ''";
+					$db->Execute($sql, array($itemTitle, $reservesrecordid));
+				}
 			}
 		}
 		if ($returnStatement) {

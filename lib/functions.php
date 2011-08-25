@@ -101,7 +101,9 @@ function performOp($op, $objectID, &$reservesUser, $extraArgs = array()) {
 			// Form::isValidSubmission returns true, or an array of strings with the names of the missing fields
 			$validSubmission = Form::isValidSubmission();
 			if ($validSubmission) {
-
+				if (isset($_SESSION['loginError'])) {
+					unset($_SESSION['loginError']);
+				}
 				$streamURL = '';
 
 				if (isset($_SESSION['streamURL'])) {
@@ -113,10 +115,12 @@ function performOp($op, $objectID, &$reservesUser, $extraArgs = array()) {
 						unset($_SESSION['loginError']);
 					}
 					// check to see if this was a redirection to a stream for a file download
-					if ($streamURL != '') {
+					if ($streamURL != '' && ReservesRequest::wasDownloadLogin()) {
 						unset($_SESSION['streamURL']); // clear it just so future redirects work, if the user stays on the Reserves site.
 						ReservesRequest::doRedirect($streamURL);
 						exit();
+					} else {
+						unset($_SESSION['streamURL']);
 					}
 				} else {
 					$_SESSION['loginError'] = true;
@@ -201,6 +205,36 @@ function performOp($op, $objectID, &$reservesUser, $extraArgs = array()) {
 				}
 			}
 		break;
+
+		case 'adminSemesters':
+
+			$validSubmission = Form::isValidSubmission();
+			if ($validSubmission) {
+
+				import('general.Semester');
+				$semesterID = intval($objectID);
+				$semester = new Semester($semesterID);
+
+				$semester->update();
+				return true;
+			}
+
+		break;
+
+		case 'semester':
+
+			import('general.Semester');
+			$semesters = Semester::getSemesters();
+			$terms = getSemesterTerms();
+
+			$json = array();
+			foreach ($semesters as $semester) {
+				$json[ $semester->getYear() . $semester->getTerm() ]  = array( 'year' => $semester->getYear(), 'termName' => $terms[$semester->getTerm()], 'startDate' => $semester->getStartDate(), 'endDate' => $semester->getEndDate(), 'isCurrent' => $semester->isCurrent());
+			}
+
+			echo json_encode($json);
+			exit();
+			break;
 
 		case 'createReservesItem':
 
@@ -301,6 +335,7 @@ function performOp($op, $objectID, &$reservesUser, $extraArgs = array()) {
 					import('items.PhysicalReserveItem');
 					$emailid = trim(decryptStringMobile($emailid));
 					$ldapInfo = LDAPConnection::getSectionsFromLDAPRecord($emailid);
+					if (!$ldapInfo) { return null; } // explicit, since this means they have NO LDAP record.
 					$sectionCodes = $ldapInfo[0];
 					$sectionCodesFromAssignedRoles = ReservesUser::getAssignedCourseSectionsByUser($emailid);
 					if (is_array($sectionCodes)) {
@@ -401,7 +436,9 @@ function performOp($op, $objectID, &$reservesUser, $extraArgs = array()) {
 				} else {
 					$jsonResult = array();
 					$jsonResult['total'] = $reservesSections[1];
-					foreach ($reservesSections[0] as $section) {
+					$sections = array();
+					if (is_array($reservesSections[0])) { $sections = $reservesSections[0]; }
+					foreach ($sections as $section) {
 						$jsonResult[$section->getCalendarCourseCode()] = array('id' => $section->getSectionID(), 'code' => $section->getShortCourseCode(), 'section' => $section->getSectionNumber(), 'name' => $section->getCourseName(), 'instructor' => $section->getInstructors());
 					}
 
@@ -426,10 +463,11 @@ function performOp($op, $objectID, &$reservesUser, $extraArgs = array()) {
 						$opacRecord->dueBack, $opacRecord->location, $opacRecord->library, $opacRecord->permLoc);
 					}
 					foreach($reserve->getElectronicItems() as $e) {
-						$items[ $e->getDateTimestamp() ] = array($e->getTitle(), $e->getURL());
+						$items[ $e->getDateTimestamp() ] = array($e->getTitle(), $e->getURL(), !$e->isOpenAccess(), $e->requiresEnrolment());
 					}
 				}
 
+				$items['sectionInfo'] = array('courseName' => $section->getCourseName(), 'courseCode' => $section->getShortCourseCode());
 				print json_encode($items);
 			}
 		break;
@@ -443,6 +481,15 @@ function performOp($op, $objectID, &$reservesUser, $extraArgs = array()) {
 				assert(is_array($sequences));
 				$section->updateItemHeadingSequence($sequences);
 			}
+		break;
+
+		case 'reorderSemesters':
+
+			import('general.Semester');
+			$sequences = ReservesRequest::getRequestValue('semesters');
+			assert(is_array($sequences));
+			Semester::updateSequence($sequences);
+
 		break;
 
 		case 'viewCourses':
@@ -502,7 +549,8 @@ function performOp($op, $objectID, &$reservesUser, $extraArgs = array()) {
 				} else {
 					import('general.ReservesRequest');
 					$_SESSION['streamURL'] = ReservesRequest::getRequestURI();
-					$_SESSION['loginError'] = true;
+					//$_SESSION['loginError'] = true;
+					$_SESSION['streamNoAccess'] = true;
 					ReservesRequest::doRedirect('downloadLogin');
 				}
 			}
@@ -714,6 +762,10 @@ function getQuickSearchAJAX($basePath) {
 	return $quickSearchAJAX;
 }
 
+function getSemesterTerms() {
+
+	return array('FA' => 'Fall', 'SU' => 'Summer', 'IN' => 'Intersession', 'SP' => 'Spring', 'WI' => 'Winter');
+}
 function getMergedSectionRecords($emailid) {
 
 	import('auth.LDAPConnection');

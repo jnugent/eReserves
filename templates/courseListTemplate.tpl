@@ -21,7 +21,7 @@
 			{% endif %}
 			
 			{% for item in items %}
-				{% set sections = item.getSections %}
+				{% set sections = item.getSections('ALL') %}
 	
 				<tr {% if loop.index is even %}class="plain"{% endif %}>
 					<td>{{ item.getCourseName|e }}</td><td>{% if user.isAdmin and not user.isActing %} {{ item.getCourseCode|e }} {% else %} {{ item.getCalendarCourseCode|e }} {% endif %}</td>
@@ -29,7 +29,7 @@
 						{% set courseID = item.getCourseID %}
 						{% if user.isAdmin and not user.isActing %}
 							{%if sections|length > 0 %}
-								<a href="{{ basePath }}/index.php/viewSections/{{ courseID }}">Sections</a> ({{ sections|length }}) 
+								<a href="{{ basePath }}/index.php/viewSections/{{ courseID }}/ALL">Sections</a> ({{ sections|length }}) 
 							{% else %}
 								No Sections
 							{% endif %}

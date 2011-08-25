@@ -28,28 +28,38 @@ class ReservesSearch {
 		$semesterSQL = '';
 		$sqlParams = array();
 		$adminRequest = $reservesUser->isAdmin();
-		if ($semester == '') {
-			$semester = Section::getCurrentSemester();
-			$adminRequest = true;
+		$year = '';
+		$term = '';
+		$groupBySQL = '';
+
+		if ($semester != '') {
+			//$semester = Section::getCurrentSemester();
+			if (preg_match('|^(\d+)(\w{2})$|', $semester, $matches)) {
+				$year = $matches[1];
+				$term = $matches[2];
+			}
+		} else {
+			$groupBySQL = ' ORDER BY concat(year, term)';
 		}
 
-		if (preg_match('|^(\d+)(\w{2})$|', $semester, $matches)) {
-			$year = $matches[1];
-			$term = $matches[2];
+		$sectionRoleSQL = ' WHERE ';
+		$sectionRoleSQL = ', sectionRole sr WHERE sr.sectionID = s.sectionID AND ';
+		if (!$adminRequest) {
+			$semesterSQL = ', section s, reservesRecord r, itemHeading i ' . $sectionRoleSQL . ' s.courseID = c.courseID ';
+			if ($year != '' && $term != '') { $semesterSQL .= 'AND s.year = ? AND s.term = ? '; }
+			$semesterSQL .= 'AND s.sectionID = i.sectionID AND i.itemHeadingID =  r.itemHeadingID';
+		}
 
-			$sectionRoleSQL = ' WHERE ';
-			$sectionRoleSQL = ', sectionRole sr WHERE sr.sectionID = s.sectionID AND ';
-			if (!$adminRequest) {
-				$semesterSQL = ', section s, reservesRecord r, itemHeading i ' . $sectionRoleSQL . ' s.courseID = c.courseID AND s.year = ? AND s.term = ? AND s.sectionID = i.sectionID AND i.itemHeadingID =  r.itemHeadingID';
-			}
-			else {
-				$semesterSQL = ', section s ' . $sectionRoleSQL . ' s.courseID = c.courseID AND s.year = ? AND s.term = ? ';
-			}
+		else {
+			$semesterSQL = ', section s ' . $sectionRoleSQL . ' s.courseID = c.courseID ';
+			if ($year != '' && $term != '') { $semesterSQL .= 'AND s.year = ? AND s.term = ? '; }
+		}
 
+		if ($year != '' && $term != '') {
 			$sqlParams = array($year, $term);
 		}
 
-		/* first query to get the total number of records */
+		 //first query to get the total number of records
 		$sql = 'SELECT DISTINCT s.sectionID FROM course c';
 
 		$whereClause = self::buildMySQLWhereClause($fields, $keywords, $semesterSQL, $db);
@@ -62,8 +72,13 @@ class ReservesSearch {
 
 			$sql = 'SELECT DISTINCT s.sectionID FROM course c';
 
+
 			$limitClause = " LIMIT $offset, 25";
-			$sql .= $whereClause . $limitClause;
+			$sql .= $whereClause;
+			if ($groupBySQL != '') {
+				$sql .= $groupBySQL;
+			}
+			$sql .= $limitClause;
 
 			$returnStatement = $db->Execute($sql, $sqlParams);
 			if ($returnStatement->RecordCount() > 0) {

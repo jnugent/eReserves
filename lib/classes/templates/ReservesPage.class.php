@@ -53,7 +53,8 @@ class ReservesPage {
 		import('general.ReservesRequest');
 		import('forms.Form');
 
-		$form = new Form(array('id' => 'login', 'method' => 'post', 'action' => $this->basePath . '/index.php/login'));
+		$highlight = isset($_GET['h']) ? 'highlight' : '';
+		$form = new Form(array('id' => 'login', 'class' => $highlight, 'method' => 'post', 'action' => $this->basePath . '/index.php/login'));
 		$fieldSet = new FieldSet(array('legend' => 'Login'));
 		$fieldSet->addField( new HiddenField( array('name' => 'currentURI', 'value' => ReservesRequest::getRequestURI() ) ) );
 		$fieldSet->addField(new TextField( array('name' => 'username','primaryLabel' => 'Login ID', 'secondaryLabel' => '', 'required' => true,
@@ -161,7 +162,7 @@ class ReservesPage {
 
 		$templateState = array('page' => $this, 'basePath' => $this->basePath, 'user' => $reservesUser, 'opPerformed' => $opPerformed);
 		$referringDoc = ReservesRequest::getReferringPage() != '' ? ReservesRequest::getReferringPage() : 'javascript:history.go(-1)';
-		$breadCrumb = '<a href="' . $this->basePath . '/index.php">Home</a> | <a href="' . $referringDoc . '">Previous Page</a> ';
+		$breadCrumb = '<a href="' . $this->basePath . '/index.php">Reserves Home</a> | <a href="' . $referringDoc . '">Previous Page</a> ';
 
 		if ($reservesUser->isAnonymous()) {
 			$templateState['loginForm'] = $this->_getLoginForm();
@@ -180,6 +181,8 @@ class ReservesPage {
 				$templateState['keywords'] = $extraArgs[1] != '' ? $extraArgs[1] : ReservesRequest::getRequestValue('keywords');
 				$templateState['semester'] = $extraArgs[2] != '' ? $extraArgs[2] : ReservesRequest::getRequestValue('semester');
 
+				$templateState['keywords'] = htmlspecialchars($templateState['keywords']);
+				$templateState['semester'] = htmlspecialchars($templateState['semester']);
 				// NOTE this case falls through to get the search form that is present on the default index page.
 
 			case '': // the default front page case
@@ -196,8 +199,8 @@ class ReservesPage {
 
 				$keywords = ReservesRequest::getRequestValue('keywords') != '' ? htmlspecialchars(ReservesRequest::getRequestValue('keywords')) : $extraArgs[1];
 
-				$fieldSet->addField(new TextField( array('name' => 'keywords', 'primaryLabel' => 'Search', 'secondaryLabel' => 'Enter some keywords to search for', 'required' => true,
-							'requiredMsg' => 'Please enter some keywords', 'value' => $keywords)));
+				$fieldSet->addField(new TextField( array('name' => 'keywords', 'primaryLabel' => 'Search', 'secondaryLabel' => 'Search by instructor, course name or course number.', 'required' => true,
+							'requiredMsg' => 'Please enter some keywords', 'value' => $templateState['keywords'])));
 
 				import('items.Section');
 				$fieldSet->addField(Section::getSemesterDropdown(TRUE, $op, $templateState['semester']));
@@ -236,6 +239,11 @@ class ReservesPage {
 				break;
 
 			case 'downloadLogin':
+					if ($_SESSION['loginError'] && !$_SESSION['streamNoAccess']) {
+						$templateState['loginError'] = true;
+					} else if ($_SESSION['streamNoAccess']) {
+						$templateState['noAccess'] = true;
+					}
 					$templateState['loginForm'] = $this->_getLoginForm();
 				break;
 			case 'editCourse':
@@ -261,6 +269,21 @@ class ReservesPage {
 				$editForm = $section->assembleEditForm($this->basePath);
 				$formsArray[] = $editForm;
 
+				$templateState['forms'] = $formsArray;
+
+				break;
+
+			case 'adminSemesters':
+
+				import('general.Semester');
+				$semesters = Semester::getSemesters();
+				$templateState['semesters'] = $semesters;
+				
+				$semesterID = intval($objectID);
+				$semester = new Semester($semesterID);
+				$editForm = $semester->assembleEditForm($this->basePath);
+				$formsArray[] = $editForm;
+				$templateState['semester'] = $semester;
 				$templateState['forms'] = $formsArray;
 
 				break;
@@ -553,7 +576,7 @@ class ReservesPage {
 	public function showSecurityException($reservesUser) {
 		import('general.Config');
 		$config = new Config();
-		$templateState = array('loginForm' => $this->_getLoginForm(), 'breadCrumb' => '<a href="/reserves/index.php">Home</a>', 'page' => $this, 'user' => $reservesUser, 'basePath' => $this->base_path);
+		$templateState = array('loginForm' => $this->_getLoginForm(), 'breadCrumb' => '<a href="/reserves/index.php">Reserves Home</a>', 'page' => $this, 'user' => $reservesUser, 'basePath' => $this->base_path);
 		$this->template->loadTemplate('securityException.tpl', $templateState);
 	}
 }

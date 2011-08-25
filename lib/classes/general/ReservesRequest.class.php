@@ -72,6 +72,14 @@ class ReservesRequest {
 		return $doc;
 	}
 
+	static function wasDownloadLogin() {
+		$doc = self::getReferringPage();
+		if (preg_match('{/index\.php/downloadLogin}', $doc)) {
+			return true;
+		} else{
+			return false;
+		}
+	}
 	/**
 	 * @brief returns the remote IP address from the client.
 	 * @return String the IP address.

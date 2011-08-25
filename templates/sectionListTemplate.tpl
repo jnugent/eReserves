@@ -139,7 +139,7 @@
 					{% if user.canAdministerSection(section.getSectionID) or (user.isAdmin and not user.isActing) %}
 					<td>
 						{% if user.isAdmin and not user.isActing %}
-							<a href="{{ basePath }}/index.php/editSection/{{ section.getSectionID }}">Edit</a> | <span><a href="#" id="unenrolLink-{{ section.getSectionID }}" onClick="showUnenrolModal({{ section.getSectionID }})">Unenrol Students</a></span> |
+							<a href="{{ basePath }}/index.php/editSection/{{ section.getSectionID }}">Edit</a> | <span><a href="#" id="unenrolLink-{{ section.getSectionID }}" onClick="showUnenrolModal({{ section.getSectionID }})">Unenrol ALL Students</a></span> |
 						{% endif %}
 						{% if user.canAdministerSection(section.getSectionID) or (user.isAdmin and not user.isActing) %}
 							<a href="{{ basePath }}/index.php/assignPeople/{{ section.getSectionID }}/0">Instructors</a> | <a href="{{ basePath }}/index.php/itemHeadings/{{ section.getSectionID }}/0">Headings</a>

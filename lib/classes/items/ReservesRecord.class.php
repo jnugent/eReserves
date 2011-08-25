@@ -200,11 +200,11 @@ class ReservesRecord extends ReserveItem {
 			$item = new ElectronicReserveItem($electronicItems[0]);
 
 			$loginRequired = true;
- 
-			if ($reservesUser->isAdmin() || ( $reservesUser->isLoggedIn() && !$item->requiresEnrolment() && $item->isOpenAccess()) ||
-				$this->getSection()->userIsEnrolled($reservesUser->getUserName()) ) { $loginRequired = false; }
+			$info = '<img height="15" src="' . $basePath . '/images/mimeIcons/' . $item->mapTypeToImg() . '.png" alt="MIME type" />';
 
-			return array('loginRequired' => $loginRequired, 'type' => 'e', 'id' => $item->getElectronicItemID(), 'title' => $this->getTitle(), 'display' => 'Available Online', 'info' => '<img height="15" src="' . $basePath . '/images/mimeIcons/' . $item->mapTypeToImg() . '.png" alt="MIME type" />', 'url' => $item->getURL(), 'notes' => $item->getNotes());
+			if ($reservesUser->isAdmin() || $item->isOpenAccess() || $item->isRemoteFile() || ( $reservesUser->isLoggedIn() && !$item->requiresEnrolment()) ||
+				$this->getSection()->userIsEnrolled($reservesUser->getUserName()) ) { $loginRequired = false; }
+			return array('loginRequired' => $loginRequired, 'type' => 'e', 'id' => $item->getElectronicItemID(), 'title' => $item->getTitle(), 'display' => 'Available Online', 'info' => $info, 'url' => $item->getURL(), 'notes' => $item->getNotes());
 		}
 	}
 
@@ -435,8 +435,8 @@ class ReservesRecord extends ReserveItem {
 			$fieldSet->addField(new Checkbox( array('name' => 'updatelinked', 'primaryLabel' => 'Update linked Records?', 'secondaryLabel' => '' ,'value' => true) ) );
 			$fieldSet->addField(new Checkbox( array('name' => 'keeplinked', 'primaryLabel' => 'Maintain link to others?', 'secondaryLabel' => '' ,'value' => true) ) );
 		}
-		$fieldSet->addField(new TextField( array('required' => true, 'primaryLabel' => 'Reserves Record Title', 'secondaryLabel' => 'plain-text title', 'name' => 'reservesrecordtitle',
-							'value' => $this->getAttribute('reservesrecordtitle'), 'requiredMsg' => 'Please enter a title') ));
+		$fieldSet->addField(new TextField( array('primaryLabel' => 'Reserves Record Title', 'secondaryLabel' => 'Not required.  Default is title of first item added.', 'name' => 'reservesrecordtitle',
+							'value' => $this->getAttribute('reservesrecordtitle'))));
 
 		$fieldSet->addField(new TextArea( array('primaryLabel' => 'Reserves Record Details', 'secondaryLabel' => 'free-form details and notes', 'name' => 'details',
 							'value' => $this->getAttribute('details') )));

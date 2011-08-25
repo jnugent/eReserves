@@ -87,7 +87,7 @@
 			{%if canAdmin %}
 				<a onClick="showAddItemModal('{{ basePath }}/index.php/adminCourseReserves/')" href="#">Add New Item</a> |
 				<a href="{{ basePath }}/index.php/itemHeadings/{{ section.getSectionID }}/0">Manage Headings</a> |
-				| <a href="{{ basePath }}/index.php/assignPeople/{{ section.getSectionID }}">Assign People</a>  |
+				<a href="{{ basePath }}/index.php/assignPeople/{{ section.getSectionID }}">(Un)assign People</a>  |
 				<a href="{{ basePath }}/index.php/editSection/{{ section.getSectionID }}">Edit Section</a> 
 				
 			{% endif %}

@@ -147,6 +147,21 @@ class ItemHeading extends ElectronicReserveItem {
 	}
 
 	/**
+	 *  @brief Deletes this electronic reserve item.
+	 *  @return boolean success or not.
+	 */
+	function delete() {
+
+		$db = getDB();
+		$sql = 'DELETE FROM itemHeading WHERE itemHeadingID = ?';
+		$returnStatement = $db->Execute($sql, array($this->getItemHeadingID()));
+		if ($returnStatement) {
+			return true;
+		} else {
+			return false;
+		}
+	}
+	/**
 	 * @brief a convenience function to just toggle a heading title when we use our AJAX method.
 	 * @return boolean true or false, if the update succeeded or not.
 	 */

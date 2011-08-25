@@ -34,6 +34,7 @@
 						<li><a href="{{ basePath }}/index.php/searchByUser">Find Courses for a User</a></li>
 					<!--	<li><a href="{{ basePath }}/index.php/searchWC">Search Worldcat for a Citation</a></li>	-->
 						<li><a href="{{ basePath }}/index.php/switchToStudent">Switch to Student View</a></li>
+						<li><a href="{{ basePath }}/index.php/adminSemesters">Maintain Semester List</a></li>
 					</ul>
 				{% endif %}
 	

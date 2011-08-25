@@ -26,6 +26,10 @@
 						{% set sectionID = section.getSectionID %}
 						{% set reserves = section.getReserves %}
 						{% if sectionID != prevSectionID %}
+						{% if yearterm != section.getYearTerm %}
+							{% set yearterm = section.getYearTerm %}
+							<tr class="sectionHeader"><td colspan="3">{{ yearterm }}</td></tr>
+						{% endif %}
 							<tr id="section{{ sectionID }}" {% if loop.index is even %}class="plain"{% endif %}>
 								<td><a href="{{ basePath }}/index.php/viewReserves/{{ section.getSectionID }}">{{ section.getCourseName }}</a> ({{ section.getSectionNumber }})</td>
 								<td>{{ section.getShortCourseCode }}</td>
@@ -37,7 +41,7 @@
 					{% include "pageLinks.tpl" %}
 				</table>
 		{% else %}
- 			<p>No matching sections {%if not user.isAdmin %}with reserves{% endif %} were found.  Try again?</p>
+ 			<p class="caution">No matching sections {%if not user.isAdmin %}with reserves{% endif %} were found.  Try again?</p>
 			{% for form in forms %}
 				{{ form.display }} 
 			{% endfor %} 

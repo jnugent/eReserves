@@ -14,7 +14,7 @@ class ElectronicReserveItem extends ReserveItem {
 
 		if ($electronicItemID > 0) {
 			$db = getDB();
-			$sql = "SELECT e.electronicItemID, e.mimeType, e.doi, e.notes, e.reservesRecordID, e.usageRights, e.url, e.itemTitle, e.originalFileName, e.restrictToLogin, e.restrictToEnroll, e.dateAdded,
+			$sql = "SELECT e.electronicItemID, e.mimeType, e.notes, e.reservesRecordID, e.usageRights, e.doi, e.url, e.itemTitle, e.originalFileName, e.restrictToLogin, e.restrictToEnroll, e.dateAdded,
 					e.itemAuthor, e.itemSource, e.itemPublisher, e.itemPages, e.itemVolIss, e.proxy, e.linkID
 					 FROM electronicItem e WHERE e.electronicItemID = ?";
 			$returnStatement = $db->Execute($sql, array($electronicItemID));
@@ -46,6 +46,11 @@ class ElectronicReserveItem extends ReserveItem {
 		return $returner;
 	}
 
+	public function getTitle() {
+		$returner = $this->getAttribute('itemtitle');
+		return $returner;
+	}
+	
 	/**
 	 * @brief returns the URL to an electronic resource.
 	 * @return String the URL.
@@ -56,17 +61,27 @@ class ElectronicReserveItem extends ReserveItem {
 		$config = new Config();
 
 		$prefix = $this->requiresProxy() ? $config->getSetting('proxy', 'prefix') : '';
-
 		$url = $this->getAttribute('url');
+		
 		if (preg_match("/^https?:/", $url)) {  // it's a remotely referenced page
 			return $prefix . $url;
+		} else if ($this->isDoi()) {
+			return $config->getSetting('proxy', 'doi_resolver') . $url;
 		} else {  // we'll need to stream this, so build a link to our content service
-
 			$url = $config->getSetting('general', 'base_path') . '/index.php/stream/' . $this->getElectronicItemID() . '/' . htmlspecialchars($this->getAttribute('originalfilename'));
 			return $url;
 		}
 	}
 
+	function isRemoteFile() {
+		$url = $this->getAttribute('url');
+		if (preg_match('/^https?:/', $url)) {
+			return true;
+		} else {
+			return false;
+		}
+	}
+	
 	/**
 	 * @brief returns the notes field for a record.
 	 * @return String the concatenated fields for a Citation (essentially).
@@ -87,13 +102,28 @@ class ElectronicReserveItem extends ReserveItem {
 	 * @return boolean true or false.
 	 */
 	function isOpenAccess() {
-		if ($this->getAttribute('restricttologin') == 0) {
+		if ($this->isRemoteFile() || $this->isDoi() || (!$this->requiresLogin() && !$this->requiresEnrolment())) {
 			return true;
 		} else {
 			return false;
 		}
 	}
 
+	function requiresLogin() {
+		if ($this->getAttribute('restricttologin') == 1) {
+			return true;
+		} else {
+			return false;
+		}
+	}
+	
+	function isDoi() {
+		if ($this->getAttribute('doi') == 1) {
+			return true;
+		} else {
+			return false;
+		}
+	}
 	/**
 	 * @brief electronic items can be shadowed if their copyright clearance is in dispute.  Items that are 'not_within' are shadowed to all but admins.
 	 * 'pending' items are still hidden, but tagged such that admins are aware that they are in review.
@@ -173,6 +203,9 @@ class ElectronicReserveItem extends ReserveItem {
 	 */
 	function mapTypeToImg() {
 
+		if ($this->isDoi()) {
+			return 'doi';
+		}
 		$mimeMap = array(
 			'application/octet-stream' => 'binary',
 			'bmp',
@@ -202,7 +235,7 @@ class ElectronicReserveItem extends ReserveItem {
 		import('general.ReservesRequest');
 
 		$itemtitle = ReservesRequest::getRequestValue('itemtitle');
-		$doi = ReservesRequest::getRequestValue('doi');
+		$doi = ReservesRequest::getRequestValue('doi') != '' ? '1' : '0';
 		$notes = ReservesRequest::getRequestValue('notes');
 		$author = ReservesRequest::getRequestValue('itemauthor');
 		$publisher = ReservesRequest::getRequestValue('itempublisher');
@@ -357,7 +390,7 @@ class ElectronicReserveItem extends ReserveItem {
 
 		$fileChoiceValue = '';
 		if ($this->getURL() != '') {
-			$fileChoiceValue = preg_match('|^https?:|', $this->getURL()) ? 'filechoiceurl' : 'filechoicelocal';
+			$fileChoiceValue = (preg_match('|^https?:|', $this->getURL()) || preg_match('|^\d+$|', $this->getURL())) ? 'filechoiceurl' : 'filechoicelocal';
 		}
 
 		/* the form contains both a URL and an Upload field, depending on how the record is created */
@@ -379,9 +412,10 @@ class ElectronicReserveItem extends ReserveItem {
 		$fieldSet->addField(new Checkbox( array('name' => 'restricttologin', 'primaryLabel' => 'Require logins to view?', 'value' => $this->getAttribute('restricttologin')) ) );
 		$fieldSet->addField(new Checkbox( array('name' => 'restricttoenroll', 'primaryLabel' => 'Require section enrolment?', 'value' => $this->getAttribute('restricttoenroll')) ) );
 
-		$fieldSet->addField(new TextField( array( 'primaryLabel' => 'Item URL', 'secondaryLabel' => 'Full URL', 'name' => 'url',
-							'value' => $fileChoiceValue == 'filechoiceurl' ? $this->getAttribute('url') : '', 'requiredMsg' => 'Please enter a full URL',
+		$fieldSet->addField(new TextField( array( 'primaryLabel' => 'Item URL', 'secondaryLabel' => 'Full URL or DOI', 'name' => 'url',
+							'value' => $fileChoiceValue == 'filechoiceurl' ? $this->getAttribute('url') : '', 'requiredMsg' => 'Please enter a full URL or a DOI',
 							'validationDep' => 'function(element) { if ($("#fileChoice:checked").val() == "filechoiceurl") return true; return false; }') ));
+		$fieldSet->addField(new Checkbox( array('name' => 'doi', 'primaryLabel' => 'Treat as DOI?', 'value' => $this->getAttribute('doi')) ) );
 		$fieldSet->addField(new Checkbox( array('name' => 'proxy', 'primaryLabel' => 'Proxy this URL?', 'value' => $this->getAttribute('proxy')) ) );
 
 		if ($this->getElectronicItemID() == 0) {
@@ -391,9 +425,6 @@ class ElectronicReserveItem extends ReserveItem {
 			$fieldSet->addField(new FileUpload( array('primaryLabel' => 'Upload', 'secondaryLabel' => 'A file to replace this one', 'name' => 'uploadedfile',
 							'value' => $fileChoiceValue == 'filechoicelocal' ? $this->getAttribute('originalfilename') : '') ));
 		}
-		$fieldSet->addField(new TextField( array('primaryLabel' => 'DOI', 'secondaryLabel' => 'A DOI', 'name' => 'doi',
-							'value' => $this->getAttribute('doi')) ));
-
 		$fieldSet->addField(new TextField( array('primaryLabel' => 'Publisher', 'secondaryLabel' => '', 'name' => 'itempublisher','value' => $this->getAttribute('itempublisher')) ));
 		$fieldSet->addField(new TextField( array('primaryLabel' => 'Volume/Issue', 'secondaryLabel' => '', 'name' => 'itemvoliss','value' => $this->getAttribute('itemvoliss')) ));
 		$fieldSet->addField(new TextField( array('primaryLabel' => 'Pages', 'secondaryLabel' => '', 'name' => 'itempages', 'value' => $this->getAttribute('itempages')) ));

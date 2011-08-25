@@ -256,7 +256,7 @@
 			*/
 
 			$enctype = $this->getProperty('enctype') != '' ? 'enctype="' . $this->getProperty('enctype') . '"' : '';
-			echo '<form class="valid" ' . $enctype . ' action="' . $this->getProperty('action') . '" method="' . $this->getProperty('method') . '" id="' . $this->getProperty('id') . '">';
+			echo '<form class="valid ' . $this->getProperty('class') . '" ' . $enctype . ' action="' . $this->getProperty('action') . '" method="' . $this->getProperty('method') . '" id="' . $this->getProperty('id') . '">';
 			echo '<div class="hiddenFields"><input type="hidden" name="requiredFields" value="' . $this->_getEncryptedRequiredFieldNames() . '" />';
 			echo '<input type="hidden" name="submitted" value="' . $this->_getEncryptedSubmissionTimestamp() . '" /></div>';
 			foreach ($this->_getFieldSets() as $fieldSet) {

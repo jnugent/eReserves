@@ -428,7 +428,7 @@ class ReservesUser {
 	 */
 	public function canPerformOp($op, $objectID) {
 
-		$anonymousOps	 = array('browseCourses', 'downloadLogin', 'login', 'logout', 'loginError', 'opacProxy', 'quickSearch', 'quickSearchJSON', 'searchByUserJSON', 'stream', 'viewReserves', 'viewReservesJSON', 'viewReserve', 'viewAllReserves');
+		$anonymousOps	 = array('browseCourses', 'downloadLogin', 'login', 'logout', 'loginError', 'opacProxy', 'semester', 'quickSearch', 'quickSearchJSON', 'searchByUserJSON', 'stream', 'viewReserves', 'viewReservesJSON', 'viewReserve', 'viewAllReserves');
 		$authenticatedOps = array('listCourseNumbers', 'listCoursePrefixes', 'viewCourses', 'viewSections');
 
 		if ($op == '' || in_array($op, $anonymousOps) ) {
@@ -507,6 +507,9 @@ class ReservesUser {
 					}
 					break;
 
+				case 'adminSemesters':
+				case 'reorderSemesters':
+				case 'editSemester':
 				case 'createNewCourse':
 				case 'editCourse':
 				case 'searchByUser':
