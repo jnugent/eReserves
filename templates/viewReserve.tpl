@@ -47,7 +47,7 @@
 		{{ reservesRecord.getDetails }}
 	</p>
 	
-	{% set electronicItems = reservesRecord.getElectronicItems %}
+	{% set electronicItems = reservesRecord.getElectronicItems(user) %}
 	{% set physicalItems = reservesRecord.getPhysicalItems(user) %}
 
 	
@@ -64,27 +64,36 @@
 				</tr>
 			{% for item in electronicItems %}
 				{% set clearanceStatus = item.isShadowed %}
-				{% if clearanceStatus or canAdmin %}
+				{% if clearanceStatus == 2 or canAdmin %}
 				<tr class="plain">
 					<td style="width: 40%"><strong>{{ item.getTitle }}</strong>{% if not clearanceStatus %} <em>Clearance: {{ item.getClearanceStatus }}</em> {% endif %}</td>
 					{% if not item.isRestricted or user.isAdmin or ( user.isLoggedIn and not item.requiresEnrolment ) or reservesRecord.getSection.userIsEnrolled(user.getUserName) %}
-						<td><strong><a rel="external" class="noicon" href="{{ item.getURL }}">{{ item.getLinkTitle }}</a></strong></td>
+						<td>{% if  clearanceStatus < 2 %}<strike>{% endif %}
+							<strong><a rel="external" class="noicon" href="{{ item.getURL }}">{{ item.getLinkTitle }}</a></strong>
+							{% if  clearanceStatus < 2 %}</strike>{% endif %}
+						</td>
 					{% elseif item.requiresEnrolment %}
 						{% set displayLoginMessage = true %}
-						<td><strong>{{ item.getLinkTitle }}</strong> <img src="{{ basePath }}/images/lock.png" title="please login to access this item" height="15" /></td>
+						<td>{% if  clearanceStatus < 2 %}<strike>{% endif %}
+							<strong>{{ item.getLinkTitle }}</strong> <img src="{{ basePath }}/images/lock.png" title="please login to access this item" height="15" />
+							{% if  clearanceStatus < 2 %}</strike>{% endif %}
+						</td>
 					{% else %}
 						{% set displayLoginMessage = true %}
-						<td><strong>{{ item.getLinkTitle }}</strong> <img src="{{ basePath }}/images/lock.png" title="please login to access this item" height="15" /></td>
+						<td>{% if  clearanceStatus < 2 %}<strike>{% endif %}
+							<strong>{{ item.getLinkTitle }}</strong> <img src="{{ basePath }}/images/lock.png" title="please login to access this item" height="15" />
+							{% if  clearanceStatus < 2 %}</strike>{% endif %}
+						</td>
 					{% endif %}
 					<td align="center"><img src="{{ basePath }}/images/mimeIcons/{{ item.mapTypeToImg }}.png" height="15" /></td>
 					{% if canAdmin %}
 						<td><a href="{{ basePath }}/index.php/editElectronicItem/{{ item.getElectronicItemID }}">Edit</a> | <a onClick="showModal('{{ basePath }}/index.php/deleteElectronicItem/{{ item.getElectronicItemID }}')" href="#">Delete</a></td>
 					{% endif %}
 				</tr>
-				{% endif %}
 				<tr>
 					<td colspan="{%if canAdmin %}4{% else %}3{% endif %}"><span style="margin-left: 20px;">{{ item.getNotes }}</span></td>
 				</tr>
+				{% endif %}
 			{% endfor %}
 		</table><br />
 		{% else %}

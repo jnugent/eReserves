@@ -47,6 +47,25 @@ function performOp($op, $objectID, &$reservesUser, $extraArgs = array()) {
 		case '':
 		break;
 
+		case 'blackboardJSON':
+			if ($extraArgs[1] != '') {
+				$bbCourseId = $extraArgs[1];
+				// a bbCourseId will match the BlackBoard syntax - 2006FY_GEOL*4900*FR01Y MULTI
+				import('items.Section');
+				$section = Section::getSectionFromCalendarCode($bbCourseId);
+				if ($section) {
+					import('general.Config');
+					$config = new Config();
+					$basePath = $config->getSetting('general', 'basePath');
+					$url = $basePath . '/index.php/viewReserves/' . $section->getSectionID();
+					echo json_encode(array('url' => $url));
+					exit();
+				} else {
+					echo json_encode(array('url' => ''));
+					exit();
+				}
+			}
+		break;
 		case 'assumeUserRole':
 			if ($extraArgs[0] != '') {
 
@@ -319,7 +338,7 @@ function performOp($op, $objectID, &$reservesUser, $extraArgs = array()) {
 			import('items.ReservesRecord');
 			$item = new ReservesRecord($objectID);
 			$sectionID = $item->getSectionID();
-			if ($item->delete()) {
+			if ($item->delete($reservesUser)) {
 				$op = ReservesRequest::getReferringPage();
 				ReservesRequest::doRedirect("viewReserves/$sectionID");
 			}
@@ -358,7 +377,7 @@ function performOp($op, $objectID, &$reservesUser, $extraArgs = array()) {
 										$items[ $p->getDateTimestamp() ] = array($opacRecord->title, $opacRecord->callNumber, $opacRecord->checkedOut,
 																				 $opacRecord->dueBack, $opacRecord->location, $opacRecord->library, $opacRecord->permLoc);
 									}
-									foreach($reserve->getElectronicItems() as $e) {
+									foreach($reserve->getElectronicItems($reservesUser) as $e) {
 										$items[ $e->getDateTimestamp() ] = array($e->getTitle(), $e->getURL());
 									}
 								}
@@ -432,10 +451,12 @@ function performOp($op, $objectID, &$reservesUser, $extraArgs = array()) {
 				$pageOffset = intval($extraArgs[0]) > 0 ? intval($extraArgs[0]) : 0;
 				$reservesSections = ReservesSearch::searchSections($reservesUser, $keywords, $semesterLimit, $pageOffset);
 				if ($op == 'quickSearch') {
+					$_SESSION['quickSearchURL'] = ReservesRequest::getRequestURI();
 					return $reservesSections;
 				} else {
 					$jsonResult = array();
 					$jsonResult['total'] = $reservesSections[1];
+					$jsonResult['prefixSuggest'] = $reservesSections[3];
 					$sections = array();
 					if (is_array($reservesSections[0])) { $sections = $reservesSections[0]; }
 					foreach ($sections as $section) {
@@ -448,27 +469,35 @@ function performOp($op, $objectID, &$reservesUser, $extraArgs = array()) {
 			}
 		break;
 
+		case 'feed':
 		case 'viewReservesJSON':
 			if ($objectID > 0) {
 				import('items.Section');
 				$section = new Section($objectID);
 				$items = array();
 
-				$reserves = $reserves = $section->getReserves();
+				$reserves = $section->getReserves();
 				foreach ($reserves as $reserve) {
 					foreach ($reserve->getPhysicalItems() as $p) {
 						$opacRecord = json_decode(accessOPACRecord(PhysicalReserveItem::PHYSICAL_RESERVE_ITEM_QUERY, array('barCode' => $p->getBarCode())));
 
-						$items[ $p->getDateTimestamp() ] = array($opacRecord->title, $opacRecord->callNumber, $opacRecord->checkedOut,
-						$opacRecord->dueBack, $opacRecord->location, $opacRecord->library, $opacRecord->permLoc);
+						$items[ $p->getBarCode() ] = array($opacRecord->title, $opacRecord->callNumber, $opacRecord->checkedOut,
+						$opacRecord->dueBack, $opacRecord->location, $opacRecord->library, $opacRecord->permLoc, date('r', $p->getDateTimestamp()), 'p');
 					}
-					foreach($reserve->getElectronicItems() as $e) {
-						$items[ $e->getDateTimestamp() ] = array($e->getTitle(), $e->getURL(), !$e->isOpenAccess(), $e->requiresEnrolment());
+					foreach($reserve->getElectronicItems($reservesUser) as $e) {
+						$items[ $e->getElectronicItemID() ] = array($e->getTitle(), $e->getURL(), !$e->isOpenAccess(), $e->requiresEnrolment(), date('r', $e->getDateTimestamp()), 'e', $e->requiresProxy(), $e->isRemoteFile());
 					}
 				}
 
-				$items['sectionInfo'] = array('courseName' => $section->getCourseName(), 'courseCode' => $section->getShortCourseCode());
-				print json_encode($items);
+				if ($op == 'feed') {
+					import('general.Config');
+					$config = new Config();
+					return array($items, $section->getInstructors(), array('courseName' => $section->getCourseName(), 'courseCode' => $section->getShortCourseCode(), 'sectionId' => $section->getSectionID()));
+				} else {
+
+					$items['sectionInfo'] = array('courseName' => $section->getCourseName(), 'courseCode' => $section->getShortCourseCode(), 'sectionId' => $section->getSectionID());
+					print json_encode($items);
+				}
 			}
 		break;
 
@@ -512,7 +541,6 @@ function performOp($op, $objectID, &$reservesUser, $extraArgs = array()) {
 		break;
 
 		case 'stream':
-
 			if ($objectID > 0) {
 				import('items.ElectronicReserveItem');
 				import('items.ReservesRecord');
@@ -520,7 +548,7 @@ function performOp($op, $objectID, &$reservesUser, $extraArgs = array()) {
 				$item = new ElectronicReserveItem($objectID);
 				$url = $item->getAttribute('url');
 				$mimeType = $item->getAttribute('mimeType');
-				$originalFileName = $item->getAttribute('originalFileName');
+				$originalFileName = $item->getAttribute('originalfilename');
 
 				$reservesRecord = new ReservesRecord($item->getAttribute('reservesrecordid'));
 
@@ -539,12 +567,18 @@ function performOp($op, $objectID, &$reservesUser, $extraArgs = array()) {
 					}
 				}
 
-				if ( $mobileAuth || $reservesUser->isAdmin() || ($reservesUser->isLoggedIn() && !$item->requiresEnrolment() && $item->isOpenAccess())
-					|| ($reservesRecord->getSection()->userIsEnrolled($reservesUser->getUserName())) ) {
-					header('Content-Type: ' . $mimeType);
+				if ( 
+					$mobileAuth || $reservesRecord->getSection()->userIsEnrolled($reservesUser->getUserName()) || ( $reservesUser->isAdmin() && !$reservesUser->isActing() ) || 
+					( $reservesUser->isLoggedIn() && !$item->requiresEnrolment() && $item->isOpenAccess() )
+					 ) {
+					header('Pragma: public');
+					header('Cache-control: private');
+					header('Content-type: ' . $mimeType);
+					header('Content-length: ' . filesize($url));
+					header('Content-Disposition: attachment; filename="' . $originalFileName . '"');
+					header('Content-Description: File Transfer');
+					header('Content-Type: ' . $mimeType . '; name=' . $originalFileName);
 					// these next two headers were commented out.  re-enabled for testing.
-					header('Content-Disposition: attachment; filename="' . urlencode($originalFileName) . '"');
-					header('Content-Length: ' . filesize($url));
 					echo file_get_contents($url);
 				} else {
 					import('general.ReservesRequest');
@@ -567,7 +601,7 @@ function performOp($op, $objectID, &$reservesUser, $extraArgs = array()) {
 					/* the opacProxy only ever gets used when a user views the catalogue record on the reserves site.  So, we're only ever
 					 * querying for a record with a barcode search.
 					 */
-					echo $content;
+					echo iconv('UTF-8', 'UTF-8//IGNORE', $content);
 				} else {
 					return false;
 				}

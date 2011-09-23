@@ -345,10 +345,21 @@ class Section extends ElectronicReserveItem {
 	function userIsEnrolled($reservesUserName) {
 		$db = getDB();
 		$sql = "SELECT r.sectionRoleID FROM sectionRole r WHERE r.sectionID = ? AND r.userName = ?";
-		$returnStatement = $db->Execute($sql, array($this->getSectionID(), $reservesUserName));
+		$params = array($this->getSectionID(), $reservesUserName);
+		$returnStatement = $db->Execute($sql, $params);
 		if ($returnStatement->RecordCount() ==  1) {
 			return true;
 		} else {
+			import('auth.LDAPConnection');
+			$sectionCodes = LDAPConnection::getSectionsFromLDAPRecord($reservesUserName);
+			if (is_array($sectionCodes)) {
+				foreach ($sectionCodes[0] as $sectionCode) {
+					$section = Section::getSectionFromCalendarCode($sectionCode);
+					if ($this->getSectionID() == $section->getSectionID()) {
+						return true;
+					}
+				}
+			}
 			return false;
 		}
 	}

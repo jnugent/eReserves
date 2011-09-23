@@ -18,7 +18,7 @@
 			<ul>
 			{% if user.isLoggedIn %}
 				<li><a href="{{ basePath }}/index.php/logout">Logout?</a></li>
-				<li><a href="{{ basePath }}/index.php/viewCourses">View{% if user.isAdmin %} All Sections{% else %}Your Courses{% endif %}</a></li>
+				<li><a href="{{ basePath }}/index.php/viewCourses">View{% if user.isAdmin and not user.isActing %} All Sections{% else %} Your Reserves{% endif %}</a></li>
 			{% endif %}
 	
 				 <li><a href="{{ basePath }}/index.php/viewAllReserves">View All Active Courses</a></li>

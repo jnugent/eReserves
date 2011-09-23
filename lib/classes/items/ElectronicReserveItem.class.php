@@ -50,7 +50,7 @@ class ElectronicReserveItem extends ReserveItem {
 		$returner = $this->getAttribute('itemtitle');
 		return $returner;
 	}
-	
+
 	/**
 	 * @brief returns the URL to an electronic resource.
 	 * @return String the URL.
@@ -62,7 +62,7 @@ class ElectronicReserveItem extends ReserveItem {
 
 		$prefix = $this->requiresProxy() ? $config->getSetting('proxy', 'prefix') : '';
 		$url = $this->getAttribute('url');
-		
+
 		if (preg_match("/^https?:/", $url)) {  // it's a remotely referenced page
 			return $prefix . $url;
 		} else if ($this->isDoi()) {
@@ -81,7 +81,7 @@ class ElectronicReserveItem extends ReserveItem {
 			return false;
 		}
 	}
-	
+
 	/**
 	 * @brief returns the notes field for a record.
 	 * @return String the concatenated fields for a Citation (essentially).
@@ -90,7 +90,7 @@ class ElectronicReserveItem extends ReserveItem {
 		$fields = array();
 		foreach (array('itemauthor', 'itemsource', 'itempublisher', 'itemvoliss', 'itempages') as $field) {
 			if (($val =& $this->getAttribute($field)) != '') {
-				$fields[] = $val;
+				$fields[] = iconv('UTF-8', 'ASCII//IGNORE', $val);
 			}
 		}
 		$returner = join(', ', $fields);
@@ -116,7 +116,7 @@ class ElectronicReserveItem extends ReserveItem {
 			return false;
 		}
 	}
-	
+
 	function isDoi() {
 		if ($this->getAttribute('doi') == 1) {
 			return true;
@@ -138,7 +138,7 @@ class ElectronicReserveItem extends ReserveItem {
 				return ELECTRONIC_ITEM_PENDING;
 				break;
 			default:
-				return ELECTRONIC_ITEM_CLEAR;
+				return ELECTRONIC_ITEM_CLEARED;
 				break;
 		}
 	}
@@ -404,7 +404,7 @@ class ElectronicReserveItem extends ReserveItem {
 		$fieldSet->addField(new TextField( array('required' => true, 'primaryLabel' => 'Item Title', 'secondaryLabel' => 'plain-text title', 'name' => 'itemtitle',
 							'value' => $this->getAttribute('itemtitle'), 'requiredMsg' => 'Please enter a title') ));
 		$fieldSet->addField(new TextField( array('primaryLabel' => 'Item Source', 'secondaryLabel' => '', 'name' => 'itemsource', 'required' => true,
-							'value' => $this->getAttribute('itemsource')) ));
+							'value' => iconv('UTF-8', 'ASCII//IGNORE', $this->getAttribute('itemsource'))) ));
 		$fieldSet->addField(new TextField( array('primaryLabel' => 'Item Author', 'secondaryLabel' => '', 'name' => 'itemauthor',
 							'value' => $this->getAttribute('itemauthor'), 'validationDep' => 'function(element) {if ($("#fileChoice:checked").val() == "filechoicelocal") return true; return false; } ' ) ));
 		$fieldSet->addField(ReservesRecord::getUsageRightsRadio($this->getAttribute('usagerights')));

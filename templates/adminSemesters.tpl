@@ -38,15 +38,18 @@
 			<caption>
 				These are the other semesters. Click to make changes. Drag and drop to reorder them for the dropdown.
 			</caption>
-			<tr class="nodrag nodrop"><th>&nbsp;</th><th>Semester</th><th>Start Date</th><th>End Date</th><th>Is Active?</th><th>Is Current?</th></tr>
+			<tr class="nodrag nodrop"><th>&nbsp;</th><th>Semester</th><th>Start Date</th><th>End Date</th><th>Is Active?</th><th>Is Provisionally Current?</th><th>Marked Current?</th></tr>
 			{% for semester in semesters %}
 				<tr id="{{ semester.getSemesterID }}">
 					<td>{{ loop.index }}.</td>
 					<td><a href="{{ basePath }}/index.php/adminSemesters/{{ semester.getSemesterID }}">{{ semester.getYear }}{{ semester.getTerm }}</a></td>
 					<td>{{ semester.getStartDate }}</td>
 					<td>{{ semester.getEndDate }}</td>
-					<td>{{ semester.isActive }}</td>
-					<td>{{ semester.isCurrent }}</th>
+					<td>{% if semester.isActive %}Yes{% else %}No{% endif %}</td>
+					<td>{% if semester.isCurrent %}Yes{% else %}No{% endif %}</td>
+					<td>
+						{% if semester.getAttribute('iscurrent') == 1 %}Yes{% else %}No{% endif %}
+					</td>
 				</tr>
 			{% endfor %}
 		</table>

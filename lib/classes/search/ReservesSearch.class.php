@@ -20,7 +20,7 @@ class ReservesSearch {
 		import('general.ReservesRequest');
 
 		$searchType = Course::COURSE_SEARCH_RETURN_ALL;
-		if (preg_match("/browseCourses$/", ReservesRequest::getReferringPage())) {
+		if (preg_match("/browseCourses$/", ReservesRequest::getReferringPage()) || isset($_GET['corrected'])) {
 			$searchType = Course::COURSE_SEARCH_RETURN_ONLY_PREFIX;
 		}
 		$fields = Course::getSearchFields($searchType);
@@ -61,8 +61,8 @@ class ReservesSearch {
 
 		 //first query to get the total number of records
 		$sql = 'SELECT DISTINCT s.sectionID FROM course c';
-
-		$whereClause = self::buildMySQLWhereClause($fields, $keywords, $semesterSQL, $db);
+		$prefix = '';
+		$whereClause = self::buildMySQLWhereClause($fields, $keywords, $semesterSQL, $db, $prefix, $searchType);
 		$sql .= $whereClause;
 
 		$returnStatement = $db->Execute($sql, $sqlParams);
@@ -87,12 +87,12 @@ class ReservesSearch {
 					$matchedSections[] = new Section($recordObject->SECTIONID);
 				}
 
-				return array ('0' => $matchedSections, '1' => $totalRecords, '2' => 'SEMESTER');
+				return array ('0' => $matchedSections, '1' => $totalRecords, '2' => 'SEMESTER', '3' => $prefix);
 			} else {
-				return array();
+				return array('0' => null, '1' => 0, '2' => 'SEMESTER', '3' => $prefix);
 			}
 		} else {
-			return array();
+			return array('0' => null, '1' => 0, '2' => 'SEMESTER', '3' => $prefix);
 		}
 	}
 
@@ -164,29 +164,47 @@ class ReservesSearch {
 	 * @param ADODBObject $db reference to our DB Object.
 	 * @return String the WHERE fragment.
 	 */
-	static function buildMySQLWhereClause($fields, $keywords, $semesterSQL, &$db) {
+	static function buildMySQLWhereClause($fields, $keywords, $semesterSQL, &$db, &$prefix, $searchType) {
+		if ($searchType != Course::COURSE_SEARCH_RETURN_ONLY_PREFIX) {
+			$searchFields = " LOWER(CONCAT(" . join(', ', array_merge($fields, array('sr.userName', 'sr.firstName', 'sr.lastName'))) . '))';
+		} else {
+			$searchFields = " LOWER(CONCAT(" . join(', ', $fields) . '))';
+		}
 
-		$searchFields = " LOWER(CONCAT(" . join(', ', array_merge($fields, array('sr.userName', 'sr.firstName', 'sr.lastName'))) . '))';
 		$keywordArray = preg_split("/\s+/", $keywords, -1, PREG_SPLIT_NO_EMPTY);
+		$prefix = self::getCoursePrefix($keywordArray);
 		$searchFieldArray = array();
 		foreach ($keywordArray as $keyword) {
 			$searchFieldArray[] .= $searchFields . ' LIKE '. $db->qstr('%' . $keyword . '%');
 		}
 
 		$searchFieldSQL = join(' AND ', $searchFieldArray);
-
-//		$match = " ( MATCH (" . join(',', $fields) . ") AGAINST (" . $db->qstr(join(" ", $keywordArray)) . " IN BOOLEAN MODE) ";
-
 		if ($semesterSQL == '') {
 			$returner =  "WHERE " . $searchFieldSQL;
 		} else {
 			$returner = $semesterSQL . "  AND " . $searchFieldSQL;
 		}
 
-//		$returner .= ' AND CONCAT(sr.firstName, sr.lastName) LIKE ' . $db->qstr('%' . $instructor . '%') . ' ';
-//		$returner .= " OR MATCH(sr.userName, sr.firstName, sr.lastName) AGAINST (" . $db->qstr(join(" ", $keywordArray)) . " IN BOOLEAN MODE) )";
-
 		return $returner;
+	}
+
+	static function getCoursePrefix($keywords) {
+		include('lib/prefixes.php');
+
+		$matchedPrefixes = array();
+		foreach ($keywords as $index => $keyword) {
+			foreach ($courseNameMap as $courseName => $courseCode) {
+				if (preg_match('{' . quotemeta($keyword) . '}i', $courseName)) {
+					$matchedPrefixes[$courseCode] = 1;
+				}
+			}
+		}
+
+		if (sizeof($matchedPrefixes) > 0) {
+			return array_keys($matchedPrefixes);
+		}
+
+		return null;
 	}
 }
 ?>

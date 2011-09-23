@@ -6,7 +6,6 @@
 
 	{%if user.canAdministerSection(section.getSectionID) %}
 		{% set canAdmin = true %}
-		
 		<div id="modalDelete">
 			<p>Are you sure you want to delete this item?</p>
 		</div>
@@ -109,7 +108,8 @@
 								{% if totalNumber == 1 %}
 									{% set recordInfo = reserve.getSingleItem(user, basePath) %}
 									{% if recordInfo.type == 'e' %}
-										<td style="width: 50%" id="e{{ recordInfo.id }}">
+										<td style="width: 50%;"id="e{{ recordInfo.id }}">
+											{% if recordInfo.shadowed < 2 %}<strike>{% endif %}
 											{% if recordInfo.loginRequired == false %}
 												<strong><a rel="external" href="{{ recordInfo.url }}" class="noicon {{ recordInfo.class }}">{{ recordInfo.title }}</a></strong>
 												{% autoescape false %}{{ recordInfo.info }}{% endautoescape %}
@@ -120,6 +120,7 @@
 												<img src="{{ basePath }}/images/lock.png" title="please login to access this item" height="15" />
 												
 											{% endif %}
+											{% if recordInfo.shadowed < 2 %}</strike>{% endif %}
 										</td>
 										<td style="width: 25%">{{ recordInfo.display }}</td>
 										<td>&nbsp;</td>

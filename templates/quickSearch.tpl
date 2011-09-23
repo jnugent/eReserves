@@ -15,6 +15,14 @@
 					{% endfor %}
 				</div>
 				<script>$("#searchLink").click( function() { $("#searchForm").slideToggle(); } );</script> 
+				{% if prefixSuggest|length > 0 and not corrected %}
+					Were you looking for 
+						{% for prefix in prefixSuggest %}
+							<a href="{{ basePath }}/index.php/quickSearch/0/0/{{ prefix }}/{{ semester }}?corrected=1">{{ prefix }}</a>{% if loop.index + 1 < prefixSuggest|length %}, 
+							{% elseif prefixSuggest|length > 1 %} or {% endif %}
+						{% endfor %}
+					courses?
+				{% endif %}
 				<table class="reservesTable" cellpadding="5" border="0">
 					{% include "pageLinks.tpl" %}
 					
@@ -41,7 +49,16 @@
 					{% include "pageLinks.tpl" %}
 				</table>
 		{% else %}
- 			<p class="caution">No matching sections {%if not user.isAdmin %}with reserves{% endif %} were found.  Try again?</p>
+ 			<p class="caution">No matching sections {%if not user.isAdmin %}with reserves{% endif %} were found.
+                                {% if prefixSuggest|length > 0 and not corrected %}
+                                        Were you looking for
+                                                {% for prefix in prefixSuggest %}
+                                                        <a href="{{ basePath }}/index.php/quickSearch/0/0/{{ prefix }}/{{ semester }}?corrected=1">{{ prefix }}</a>{% if loop.index + 1 < prefixSuggest|length %},
+                                                        {% elseif prefixSuggest|length > 1 %} or {% endif %}
+                                                {% endfor %}
+                                        courses?
+                                {% endif %}
+</p>
 			{% for form in forms %}
 				{{ form.display }} 
 			{% endfor %} 

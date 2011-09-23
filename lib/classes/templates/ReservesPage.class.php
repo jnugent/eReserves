@@ -80,6 +80,8 @@ class ReservesPage {
 	public function getHeader($reservesUser) {
 
 		$mobileClass = $reservesUser->isMobile() ? ' class="mobile"' : '';
+		import('general.Config');
+		$config = new Config();
 
 		include_once ("/www/core/inc/func.php");
 		echo '<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
@@ -99,6 +101,14 @@ class ReservesPage {
 			<script src="/core/js/jquery.tablednd_0_5.js" type="text/javascript"></script>';
 		echo '
 			<script type="text/javascript" src="' . $this->basePath . '/js/reserves.js"></script>';
+		if ($this->op == 'viewReserves') {
+			import('general.ReservesRequest');
+			$urlOp = ReservesRequest::getURLOp();
+			if (is_numeric($urlOp[1])) {
+				echo '<link rel="alternate" type="application/rss+xml" title="Course Reserves" href="' . $this->basePath . '/index.php/feed/' . (int) $urlOp[1] . '" />';
+			}
+		}
+
 		echo '</head>
 		<body class="twoCol lite reserves' . (!$this->_notDownloadLogin() ? ' downloadOnly' : '')  . '">';
 
@@ -161,8 +171,21 @@ class ReservesPage {
 		$config = new Config();
 
 		$templateState = array('page' => $this, 'basePath' => $this->basePath, 'user' => $reservesUser, 'opPerformed' => $opPerformed);
-		$referringDoc = ReservesRequest::getReferringPage() != '' ? ReservesRequest::getReferringPage() : 'javascript:history.go(-1)';
-		$breadCrumb = '<a href="' . $this->basePath . '/index.php">Reserves Home</a> | <a href="' . $referringDoc . '">Previous Page</a> ';
+		$referringDoc = '';
+		$referringLabel = '';
+
+		if ($_SESSION['quickSearchURL'] != '') {
+			$referringDoc = $_SESSION['quickSearchURL'];
+			$search = preg_replace('{^/.*/quickSearch/\d+/\d+/}', '', $referringDoc);
+			list ($keywords, $term) = preg_split('{/}', $search);
+			$label = 'Searched for: &quot;' . htmlentities(urldecode($keywords)) . '&quot;' . (($term != '') ? ' in ' . $term : '');
+			$referringLabel = 'Last Search Results';
+		} else {
+			$referringDoc = ReservesRequest::getReferringPage() != '' ? ReservesRequest::getReferringPage() : 'javascript:history.go(-1)';
+			$referringLabel = 'Previous Page';
+		}
+
+		$breadCrumb = '<a href="' . $this->basePath . '/index.php">Reserves Home</a> | <a title="' . $label . '" href="' . $referringDoc . '">' . $referringLabel . '</a> ';
 
 		if ($reservesUser->isAnonymous()) {
 			$templateState['loginForm'] = $this->_getLoginForm();
@@ -175,6 +198,7 @@ class ReservesPage {
 				$templateState['items'] = $opPerformed['0'];
 				$templateState['totalRecords'] = $opPerformed['1'];
 				$templateState['recordType'] = $opPerformed['2'];
+				$templateState['prefixSuggest'] = $opPerformed['3'];
 
 				$templateState['pageOffset'] = intval($extraArgs[0]) > 0 ? intval($extraArgs[0]) : 0;
 
@@ -183,6 +207,8 @@ class ReservesPage {
 
 				$templateState['keywords'] = htmlspecialchars($templateState['keywords']);
 				$templateState['semester'] = htmlspecialchars($templateState['semester']);
+				$templateState['corrected'] = isset($_GET['corrected']) ? true : false;
+
 				// NOTE this case falls through to get the search form that is present on the default index page.
 
 			case '': // the default front page case
@@ -273,12 +299,22 @@ class ReservesPage {
 
 				break;
 
+			case 'feed':
+
+				$templateState['date'] = date('r');
+				$templateState['items'] = $opPerformed[0];
+				$templateState['instructors'] = $opPerformed[1];
+				$templateState['sectionInfo'] = $opPerformed[2];
+				$templateState['baseUrl'] = 'https://' . $config->getSetting('general', 'host_name');
+
+				break;
+
 			case 'adminSemesters':
 
 				import('general.Semester');
 				$semesters = Semester::getSemesters();
 				$templateState['semesters'] = $semesters;
-				
+
 				$semesterID = intval($objectID);
 				$semester = new Semester($semesterID);
 				$editForm = $semester->assembleEditForm($this->basePath);

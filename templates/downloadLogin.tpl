@@ -7,14 +7,14 @@
 	<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no;"/>
 	<meta name="apple-mobile-web-app-capable" content="yes" />
 	<meta name="apple-mobile-web-app-status-bar-style" content="black" />
-	<link rel="shortcut icon" href="https://lib.unb.ca/favicon.ico" type="image/x-icon"> 
-	<link rel="stylesheet" href="https://lib.unb.ca/core/css/proxy/handheld.proxy.lib.css" media="handheld">
+	<link rel="shortcut icon" href="https://www.lib.unb.ca/favicon.ico" type="image/x-icon"> 
+	<link rel="stylesheet" href="https://www.lib.unb.ca/core/css/proxy/handheld.proxy.lib.css" media="handheld">
 	<link rel="stylesheet" type="text/css" media="screen" href="/core/css/validforms.css" />
 	<link rel="stylesheet" type="text/css" media="screen" href="{{ basePath }}/css/reserves.css" />
-	<link rel="stylesheet" href="https://lib.unb.ca/core/css/proxy/responsive.proxy.lib.css" media="screen">
+	<link rel="stylesheet" href="https://www.lib.unb.ca/core/css/proxy/responsive.proxy.lib.css" media="screen">
 
 	<!--[if lte IE 8]>
-	<link rel="stylesheet" href="https://lib.unb.ca/core/css/proxy/ie.proxy.lib.css" media="screen">
+	<link rel="stylesheet" href="https://www.lib.unb.ca/core/css/proxy/ie.proxy.lib.css" media="screen">
 	<![endif]-->
 	<script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/1.4.2/jquery.min.js"></script>
 	<script type="text/javascript" src="{{ basePath }}/js/reserves.js"></script>
@@ -86,16 +86,5 @@
 </div><!-- end footer -->
 
 </div><!-- end wrapper -->
-<script type="text/javascript">
-var gaJsHost = (("https:" == document.location.protocol) ? "https://ssl." : "http://www.");
-document.write(unescape("%3Cscript src='" + gaJsHost + "google-analytics.com/ga.js' type='text/javascript'%3E%3C/script%3E"));
-</script><script src="https://www.google-analytics.com/ga.js" type="text/javascript"></script>
-<script type="text/javascript">
-try {
-var pageTracker = _gat._getTracker("UA-9333082-2");
-pageTracker._trackPageview();
-} catch(err) {}</script>
-<!-- Google analytics JS disabled plugin -->
-	<noscript><img src="https://www.google-analytics.com/__utm.gif?utmwv=1&utmn=1094645107&utmsr=-&utmsc=-&utmul=-&utmje=0&utmfl=-&utmdt=-&utmhn=http://www.lib.unb.ca&utmr=&utmp=/noscript&utmac=UA-9333082-2&utmcc=__utma%3D86261725.1409145933.1287013629.1287013629.1287013629.2%3B%2B__utmb%3D86261725%3B%2B__utmc%3D86261725%3B%2B__utmz%3D86261725.1287013629.2.2.utmccn%3D(direct)%7Cutmcsr%3D(direct)%7Cutmcmd%3D(none)%3B%2B__utmv%3D86261725.--%3B" style="display: none;" /></noscript>
 </body>
 </html>

@@ -85,7 +85,7 @@ class ReservesRecord extends ReserveItem {
 		$radio->addButton( array('id' => 'creator', 'value'=> 'creator', 'caption' => 'The instructor is the creator of this material') );
 		$radio->addButton( array('id' => 'no_infringe', 'value' => 'no_infringe', 'caption' => 'These materials do not infringe on copyright') );
 		$radio->addButton( array('id' => 'cleared', 'value' => 'cleared', 'caption' => 'The materials copied here have been cleared of copyright from the rights holder') );
-		$radio->addButton( array('id' => 'pending', 'value' => 'cleared', 'caption' => 'The materials copied are pending copyright clearance from the rights holder') );
+		$radio->addButton( array('id' => 'pending', 'value' => 'pending', 'caption' => 'The materials copied are pending copyright clearance from the rights holder') );
 		$radio->addButton( array('id' => 'not_within', 'value' => 'not_within', 'caption' => 'These materials require copyright clearance review.') );
 
 		return $radio;
@@ -147,10 +147,20 @@ class ReservesRecord extends ReserveItem {
 	 * @brief returns a list of ElectronicItems asigned to this ReservesRecord //FIXME
 	 * @return Array the collection of ElectronicReserveItems items.
 	 */
-	public function getElectronicItems($onlyIDs = FALSE) {
+	public function getElectronicItems($reservesUser = null, $onlyIDs = false) {
 		$db = getDB();
-		$sql = 'SELECT electronicItemID FROM electronicItem WHERE reservesRecordID = ?';
-		$returnStatement = $db->Execute($sql, array($this->getReservesRecordID()));
+		import('items.ElectronicReserveItem');
+
+		$paramArray = array($this->getReservesRecordID());
+		if ($reservesUser->isAdmin())  {
+			$sql = 'SELECT electronicItemID FROM electronicItem WHERE reservesRecordID = ?';
+		} else {
+			$sql = 'SELECT electronicItemID FROM electronicItem WHERE reservesRecordID = ? AND (usageRights = "cleared" 
+				OR usageRights = "no_infringe" OR usageRights = "")';
+		}
+
+		$returnStatement = $db->Execute($sql, $paramArray);
+
 		if ($returnStatement) {
 			$electronicItems = array();
 			import('items.ElectronicReserveItem');
@@ -172,8 +182,13 @@ class ReservesRecord extends ReserveItem {
 	 */
 	function getTotalNumberOfItems($reservesUser) {
 
-		$physicalCount = sizeof($this->getPhysicalItems($reservesUser, TRUE));
-		$electronicCount = sizeof($this->getElectronicItems(TRUE));
+		$physicalCount = sizeof($this->getPhysicalItems($reservesUser, true));
+		$electronicItems = $this->getElectronicItems($reservesUser);
+		$count = 0;
+		foreach ($electronicItems as $item) { 
+			if ($reservesUser->isAdmin() || $item->isShadowed() == 2) { $count ++; }
+		}
+		$electronicCount = $count;
 
 		$total = $physicalCount + $electronicCount;
 		return $total;
@@ -187,8 +202,8 @@ class ReservesRecord extends ReserveItem {
 	 */
 	function getSingleItem($reservesUser, $basePath) {
 
-		$physicalItems = $this->getPhysicalItems($reservesUser, TRUE);
-		$electronicItems = $this->getElectronicItems(TRUE);
+		$physicalItems = $this->getPhysicalItems($reservesUser, true);
+		$electronicItems = $this->getElectronicItems($reservesUser, true);
 		$item = null;
 
 		if (sizeof($physicalItems) == 1) {
@@ -204,7 +219,7 @@ class ReservesRecord extends ReserveItem {
 
 			if ($reservesUser->isAdmin() || $item->isOpenAccess() || $item->isRemoteFile() || ( $reservesUser->isLoggedIn() && !$item->requiresEnrolment()) ||
 				$this->getSection()->userIsEnrolled($reservesUser->getUserName()) ) { $loginRequired = false; }
-			return array('loginRequired' => $loginRequired, 'type' => 'e', 'id' => $item->getElectronicItemID(), 'title' => $item->getTitle(), 'display' => 'Available Online', 'info' => $info, 'url' => $item->getURL(), 'notes' => $item->getNotes());
+			return array('loginRequired' => $loginRequired, 'type' => 'e', 'id' => $item->getElectronicItemID(), 'title' => $item->getTitle(), 'display' => 'Available Online', 'info' => $info, 'url' => $item->getURL(), 'notes' => $item->getNotes(), 'shadowed' => $item->isShadowed());
 		}
 	}
 
@@ -395,13 +410,13 @@ class ReservesRecord extends ReserveItem {
 	 * @brief deletes a ReservesRecord and all items in it.
 	 * @return boolean true or false, if it succeeded.
 	 */
-	public function delete() {
+	public function delete($reservesUser) {
 
 		foreach ($this->getAllPhysicalItems() as $item) {
 			$item->delete();
 		}
 
-		foreach ($this->getElectronicItems() as $item) {
+		foreach ($this->getElectronicItems($reservesUser) as $item) {
 			$item->delete();
 		}
 
