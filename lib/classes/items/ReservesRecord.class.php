@@ -137,7 +137,7 @@ class ReservesRecord extends ReserveItem {
 			$physicalItems = array();
 			import('items.PhysicalReserveItem');
 			while ($recordObject = $returnStatement->FetchNextObject()) {
-				$physicalItems[] = new PhysicalReserveItem($recordObject->PHYSICALITEMID);
+				$physicalItems[ $recordObject->PHYSICALITEMID ] = new PhysicalReserveItem($recordObject->PHYSICALITEMID);
 			}
 		}
 		return $physicalItems;
@@ -156,7 +156,7 @@ class ReservesRecord extends ReserveItem {
 			$sql = 'SELECT electronicItemID FROM electronicItem WHERE reservesRecordID = ?';
 		} else {
 			$sql = 'SELECT electronicItemID FROM electronicItem WHERE reservesRecordID = ? AND (usageRights = "cleared" 
-				OR usageRights = "no_infringe" OR usageRights = "")';
+				OR usageRights="creator" OR usageRights = "no_infringe" OR usageRights = "")';
 		}
 
 		$returnStatement = $db->Execute($sql, $paramArray);

@@ -77,7 +77,7 @@ function getOPACRecord(itemID) {
 				htmlStr = jsonObject.title + '<br />' + jsonObject.author + '<br />' + jsonObject.callNumber;
 				$('#p' + itemID + '-where').html(jsonObject.location + '<br />' + jsonObject.library);
 				if (jsonObject.checkedOut == '0') {
-					$('#p' + itemID + '-where').html(jsonObject.location + '<br />' + jsonObject.library);
+					$('#p' + itemID + '-where').html(jsonObject.location + '<br />' /*+ jsonObject.library*/);
 					$('#p' + itemID + '-avail').html(jsonObject.loanPeriod);
 				} else {
 					$('#p' + itemID + '-avail').html('Due back @ ' + jsonObject.dueBack);

@@ -272,6 +272,28 @@ class ReservesPage {
 					}
 					$templateState['loginForm'] = $this->_getLoginForm();
 				break;
+
+			case 'downloadReports':
+
+				import('general.Config');
+				$config = new Config();
+				$reportsDirectory = $config->getSetting('reports', 'reports_dir');
+
+				$reports = array();
+
+				if (is_dir($reportsDirectory)) {
+					if ($dh = opendir($reportsDirectory)) {
+						while (($file = readdir($dh)) !== false) {
+							if (preg_match('{\.csv$}', $file)) {
+								$reports[] = $file;
+							}
+						}
+					}
+				}
+
+				$templateState['reports'] = $reports;
+			break;
+
 			case 'editCourse':
 			case 'createNewCourse':
 

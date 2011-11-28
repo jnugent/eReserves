@@ -449,7 +449,6 @@ class ReservesUser {
 				case 'itemHeadings':
 				case 'reorderItemHeadings':
 				case 'unenrolStudents':
-
 					if ($this->_canEditThisSectionBySectionID($objectID)) {
 						return true;
 					} else {
@@ -508,6 +507,7 @@ class ReservesUser {
 					break;
 
 				case 'adminSemesters':
+				case 'downloadReports':
 				case 'reorderSemesters':
 				case 'editSemester':
 				case 'createNewCourse':
@@ -588,7 +588,12 @@ class ReservesUser {
 				$sections = array();
 				foreach ($sectionCodes as $sectionCode) {
 
-					$sections[] = Section::getSectionFromCalendarCode($sectionCode);
+					//$sections[] = Section::getSectionFromCalendarCode($sectionCode);
+					$section = Section::getSectionFromCalendarCode($sectionCode) ; 
+					if ($section !== false) {
+						$sections[] = $section ;
+					}
+					
 					$accountType = $this->isActing() ? $this->getAssumedAccountType() : $this->getAccountType();
 	 				if ($section) {
 						$section->assignSectionRoleForUserID($username, $accountType == $config->getSetting('ldap', 'staff_field_string') ? self::ROLE_SECTION_INSTRUCTOR : self::ROLE_SECTION_STUDENT);

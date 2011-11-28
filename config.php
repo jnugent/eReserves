@@ -92,3 +92,7 @@ wskey = YOURAPIKEY ; obviously, get this from OCLC for yourself.
 [proxy]
 prefix = "https://login.proxy.yoursite.com/login?url=" ; define the prefix to your proxy server, for off-campus access to electronic resources
 doi_resolver = "http://resolver.yoursite.com?handle=" ; define prefix to DOI resolver
+
+[reports]
+; this directory stores the nightly or weekly generated reports for physical items in the catalogue
+reports_dir = /www/reserves/reports/

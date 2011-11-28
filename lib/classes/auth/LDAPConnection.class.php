@@ -117,15 +117,19 @@ class LDAPConnection {
 						// next line is not obvious.  LDAP includes the size of the array as a 'count' first element.  array_slice removes
 						// the first element since we are not interested in this.
 						// first see if they are instructors
+						$all_courses = array() ;
 						if(is_array($entry[0][ $instructorField ])) {
 							$courses = array_slice($entry[0][ $instructorField ], 1, sizeof($entry[0][$instructorField]), TRUE);
+							$all_courses = array_merge($all_courses, $courses) ;
 						}
-						if (!is_array($entry[0][ $instructorField ]) || sizeof($entry[0][$instructorField]) == 0) {
+						
+						//if (is_array($entry[0][ $instructorField ]) || sizeof($entry[0][$instructorField]) == 0) {
 							if (is_array($entry[0][ $studentField ])) {
 								$courses = array_slice($entry[0][ $studentField ], 1, sizeof($entry[0][$studentField]), TRUE);
+								$all_courses = array_merge($all_courses, $courses) ;
 							}
-						}
-						return array($courses, $entry[0]['cn'][0], $entry[0][$accountTypeField][0]);  // include the User's name, as well the account type
+						//}
+						return array($all_courses, $entry[0]['cn'][0], $entry[0][$accountTypeField][0]);  // include the User's name, as well the account type
 					}
 				} else {
 					return null;

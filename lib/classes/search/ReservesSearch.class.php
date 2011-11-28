@@ -43,16 +43,31 @@ class ReservesSearch {
 		}
 
 		$sectionRoleSQL = ' WHERE ';
-		$sectionRoleSQL = ', sectionRole sr WHERE sr.sectionID = s.sectionID AND ';
+		//$sectionRoleSQL = ', sectionRole sr WHERE sr.sectionID = s.sectionID AND ';
+		$sectionRoleSQL = ' LEFT JOIN sectionRole sr ON (sr.sectionID = s.sectionID) WHERE ';
 		if (!$adminRequest) {
-			$semesterSQL = ', section s, reservesRecord r, itemHeading i ' . $sectionRoleSQL . ' s.courseID = c.courseID ';
-			if ($year != '' && $term != '') { $semesterSQL .= 'AND s.year = ? AND s.term = ? '; }
+			$semesterSQL = ', reservesRecord r, itemHeading i, section s ' . $sectionRoleSQL . ' s.courseID = c.courseID ';
+			if ($year != '' && $term != '') {
+				if (in_array($term, array('FA','WI'))) {
+					$semesterSQL .= "AND s.year = ? AND (s.term = ? OR s.term = 'FY') ";
+				} 
+				else {
+					$semesterSQL .= 'AND s.year = ? AND s.term = ? ';
+				} 
+			}
 			$semesterSQL .= 'AND s.sectionID = i.sectionID AND i.itemHeadingID =  r.itemHeadingID';
 		}
 
 		else {
 			$semesterSQL = ', section s ' . $sectionRoleSQL . ' s.courseID = c.courseID ';
-			if ($year != '' && $term != '') { $semesterSQL .= 'AND s.year = ? AND s.term = ? '; }
+			if ($year != '' && $term != '') {
+				if (in_array($term, array('FA','WI'))) { 
+					$semesterSQL .= "AND s.year = ? AND (s.term = ? OR s.term = 'FY') ";
+				}
+				else {
+					$semesterSQL .= 'AND s.year = ? AND s.term = ? ';
+				} 
+			}
 		}
 
 		if ($year != '' && $term != '') {
@@ -64,7 +79,7 @@ class ReservesSearch {
 		$prefix = '';
 		$whereClause = self::buildMySQLWhereClause($fields, $keywords, $semesterSQL, $db, $prefix, $searchType);
 		$sql .= $whereClause;
-
+error_log($sql) ;
 		$returnStatement = $db->Execute($sql, $sqlParams);
 		$totalRecords = $returnStatement->RecordCount();
 
@@ -86,7 +101,9 @@ class ReservesSearch {
 				while ($recordObject = $returnStatement->FetchNextObject()) {
 					$matchedSections[] = new Section($recordObject->SECTIONID);
 				}
-
+				usort($matchedSections, function($s1, $s2){
+					return strcmp($s1->getYearTerm(), $s2->getYearTerm());
+				}) ;
 				return array ('0' => $matchedSections, '1' => $totalRecords, '2' => 'SEMESTER', '3' => $prefix);
 			} else {
 				return array('0' => null, '1' => 0, '2' => 'SEMESTER', '3' => $prefix);
@@ -166,9 +183,9 @@ class ReservesSearch {
 	 */
 	static function buildMySQLWhereClause($fields, $keywords, $semesterSQL, &$db, &$prefix, $searchType) {
 		if ($searchType != Course::COURSE_SEARCH_RETURN_ONLY_PREFIX) {
-			$searchFields = " LOWER(CONCAT(" . join(', ', array_merge($fields, array('sr.userName', 'sr.firstName', 'sr.lastName'))) . '))';
+			$searchFields = " LOWER(CONCAT_WS(''," . join(', ', array_merge($fields, array('sr.userName', 'sr.firstName', 'sr.lastName'))) . '))';
 		} else {
-			$searchFields = " LOWER(CONCAT(" . join(', ', $fields) . '))';
+			$searchFields = " LOWER(CONCAT_WS(''," . join(', ', $fields) . '))';
 		}
 
 		$keywordArray = preg_split("/\s+/", $keywords, -1, PREG_SPLIT_NO_EMPTY);

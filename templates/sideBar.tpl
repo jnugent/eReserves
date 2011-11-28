@@ -35,6 +35,7 @@
 					<!--	<li><a href="{{ basePath }}/index.php/searchWC">Search Worldcat for a Citation</a></li>	-->
 						<li><a href="{{ basePath }}/index.php/switchToStudent">Switch to Student View</a></li>
 						<li><a href="{{ basePath }}/index.php/adminSemesters">Maintain Semester List</a></li>
+						<li><a href="{{ basePath }}/index.php/downloadReports">Download Reserves Reports</li>
 					</ul>
 				{% endif %}
 	

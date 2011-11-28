@@ -38,6 +38,26 @@ class Semester {
 		}
 	}
 
+	/**
+	 * @brief static method to return the Sections in a term.  Used for report generation for physical items.  From here we can get physical items.
+	 * @return an Array of matching Section objects.
+	 */
+	static function getSectionsForTerm($year, $term) {
+		import('items.Section');
+		$db = getDB();
+		$sql = "SELECT sectionID FROM section WHERE year = ? AND term = ?";
+		$returnStatement = $db->Execute($sql, array($year, $term));
+
+		if ($returnStatement) {
+			$sections = array();
+			while ($recordObject = $returnStatement->FetchNextObject()) {
+				$sections[] = new Section($recordObject->SECTIONID);
+			}
+
+			return $sections;
+		}
+	}
+
 	static function updateSequence($semesterIDs) {
 		$db = getDB();
 		$sequence = 0;

@@ -412,7 +412,11 @@ function performOp($op, $objectID, &$reservesUser, $extraArgs = array()) {
 					$sections = array();
 					if (is_array($sectionCodes)) {
 						foreach ($sectionCodes as $code) {
-							$sections[ $code ] = Section::getSectionFromCalendarCode($code);
+							//$sections[ $code ] = Section::getSectionFromCalendarCode($code);
+							$section = Section::getSectionFromCalendarCode($code) ;
+							if ($section !== false) {
+								$sections[ $code ] = $section ;
+							}
 						}
 					}
 					return array($sections, $commonName, $emailid);
@@ -639,6 +643,15 @@ function performOp($op, $objectID, &$reservesUser, $extraArgs = array()) {
 				}
 			}
 		break;
+		
+		case 'editSection':
+			$validSubmission = Form::isValidSubmission();
+			import('items.Section');
+			if ($validSubmission) {
+				$section = new Section($objectID);
+				$section->update();
+			}
+			break;
 	}
 
 	return false;
@@ -797,8 +810,7 @@ function getQuickSearchAJAX($basePath) {
 }
 
 function getSemesterTerms() {
-
-	return array('FA' => 'Fall', 'SU' => 'Summer', 'IN' => 'Intersession', 'SP' => 'Spring', 'WI' => 'Winter');
+	return array('FA' => 'Fall', 'SU' => 'Summer', 'IN' => 'Intersession', 'SP' => 'Spring', 'WI' => 'Winter', 'FY' => 'Full Year');
 }
 function getMergedSectionRecords($emailid) {
 

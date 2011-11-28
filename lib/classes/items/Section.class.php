@@ -355,8 +355,10 @@ class Section extends ElectronicReserveItem {
 			if (is_array($sectionCodes)) {
 				foreach ($sectionCodes[0] as $sectionCode) {
 					$section = Section::getSectionFromCalendarCode($sectionCode);
-					if ($this->getSectionID() == $section->getSectionID()) {
-						return true;
+					if ($section !== false) {
+						if ($this->getSectionID() == $section->getSectionID()) {
+							return true;
+						}
 					}
 				}
 			}
